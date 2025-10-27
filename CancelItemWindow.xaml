@@ -1,0 +1,28 @@
+<Window x:Class="PDV_MedusaX8.CancelItemWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Cancelar Item" Height="480" Width="800" WindowStartupLocation="CenterOwner">
+    <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="Selecione o item e informe a quantidade a cancelar" Margin="10"/>
+        <DataGrid x:Name="DgvCancel" AutoGenerateColumns="False" CanUserAddRows="False" Margin="10" RowHeight="40" FontSize="14"
+                  SelectionMode="Single" SelectionUnit="FullRow" SelectionChanged="DgvCancel_SelectionChanged" MouseDoubleClick="DgvCancel_MouseDoubleClick">
+            <DataGrid.Columns>
+                <!-- Removido: coluna de checkbox de cancelamento -->
+                <DataGridTextColumn Binding="{Binding Code}" Header="Código" Width="120" IsReadOnly="True"/>
+                <DataGridTextColumn Binding="{Binding Description}" Header="Descrição" Width="*" IsReadOnly="True"/>
+                <DataGridTextColumn Binding="{Binding AvailableQty, StringFormat=N3}" Header="Disponível" Width="120" IsReadOnly="True"/>
+                <DataGridTemplateColumn Header="Qtd a cancelar" Width="160">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBox Text="{Binding QtyToCancel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Right"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="10">
+            <Button x:Name="BtnConfirm" Content="Confirmar" Width="120" Height="36" Margin="0,0,10,0" Click="BtnConfirm_Click"/>
+            <Button x:Name="BtnClose" Content="Fechar" Width="100" Height="36" Click="BtnClose_Click"/>
+        </StackPanel>
+    </DockPanel>
+</Window>

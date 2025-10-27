@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="600" viewBox="0 0 860 600">
+  <style>
+    .label { font-family: 'Segoe UI', Arial, sans-serif; fill: #333; font-size: 16px; }
+    .label-small { font-family: 'Segoe UI', Arial, sans-serif; fill: #555; font-size: 14px; }
+    .title { font-family: 'Segoe UI', Arial, sans-serif; fill: #222; font-size: 18px; font-weight: 600; }
+    .box { fill: #ffffff; stroke: #cccccc; stroke-width: 2; }
+    .divider { fill: #e0e0e0; }
+    .bg { fill: #f0f0f0; }
+    .btn-cancel { fill: #9e9e9e; }
+    .btn-confirm { fill: #28a745; }
+    .btn-label { font-family: 'Segoe UI', Arial, sans-serif; fill: #ffffff; font-size: 16px; font-weight: 600; }
+  </style>
+
+  <!-- Fundo de padding -->
+  <rect x="0" y="0" width="860" height="600" class="bg" />
+
+  <!-- Título (opcional) -->
+  <text x="20" y="30" class="title">Layout da Tela de Pagamento</text>
+  <text x="680" y="30" class="label-small">Fundo/Padding: #f0f0f0</text>
+
+  <!-- Topo / Header -->
+  <rect x="20" y="50" width="820" height="60" class="box" />
+  <text x="40" y="85" class="label">Topo (Fechar em branco)</text>
+
+  <!-- Divisor 10px abaixo do header -->
+  <rect x="20" y="110" width="820" height="10" class="divider" />
+  <text x="40" y="106" class="label-small">Divisor 10px</text>
+
+  <!-- Área de conteúdo (Meio) -->
+  <text x="20" y="140" class="label">Meio (conteúdo em 3 colunas)</text>
+
+  <!-- Coluna 1: Opções de Pagamento -->
+  <rect x="20" y="160" width="240" height="380" class="box" />
+  <text x="30" y="190" class="label">Opções de Pagamento</text>
+  <text x="30" y="212" class="label-small">Máx. 3 por linha (UniformGrid)</text>
+
+  <!-- Coluna 2: Valor / Entrada -->
+  <rect x="280" y="160" width="240" height="380" class="box" />
+  <text x="290" y="190" class="label">Valor</text>
+  <text x="290" y="212" class="label-small">Entrada de valor / parcelas</text>
+
+  <!-- Coluna 3: Resumo + Pagamentos Aplicados -->
+  <rect x="540" y="160" width="240" height="380" class="box" />
+  <text x="550" y="190" class="label">Resumo e Pagamentos</text>
+  <text x="550" y="212" class="label-small">Totais + lista aplicada</text>
+
+  <!-- Rodapé -->
+  <rect x="20" y="550" width="820" height="30" class="bg" />
+  <text x="20" y="545" class="label">Rodapé</text>
+  <rect x="40" y="500" width="220" height="60" class="btn-cancel" rx="6" />
+  <text x="58" y="535" class="btn-label">Cancelar (F4)</text>
+
+  <rect x="360" y="500" width="440" height="60" class="btn-confirm" rx="6" />
+  <text x="380" y="535" class="btn-label">Finalizar Venda (ENTER)</text>
+</svg>

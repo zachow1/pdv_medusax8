@@ -1,0 +1,66 @@
+<Window x:Class="PDV_MedusaX8.ChequeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Dados do Cheque" Height="420" Width="560"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <!-- Nova linha para cidade -->
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Valor do Cheque:"/>
+            <TextBox x:Name="TxtValor" Grid.Row="0" Grid.Column="0" Margin="0,24,12,8" FontSize="16" Text="0,00" HorizontalAlignment="Stretch"/>
+
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="Data de Vencimento (Bom Para):"/>
+            <DatePicker x:Name="DtBomPara" Grid.Row="0" Grid.Column="1" Margin="0,24,0,8"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Beneficiário (Emitente):"/>
+            <TextBox x:Name="TxtEmitente" Grid.Row="1" Grid.Column="0" Margin="0,24,12,8"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="Banco (código 3 dígitos):"/>
+            <ComboBox x:Name="CmbBanco" Grid.Row="1" Grid.Column="1" Margin="0,24,0,8" DisplayMemberPath="Display" SelectedValuePath="Code"/>
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Agência:"/>
+            <TextBox x:Name="TxtAgencia" Grid.Row="2" Grid.Column="0" Margin="0,24,12,8"/>
+
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="Conta Corrente:"/>
+            <TextBox x:Name="TxtConta" Grid.Row="2" Grid.Column="1" Margin="0,24,0,8"/>
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="Número do Cheque:"/>
+            <TextBox x:Name="TxtNumeroCheque" Grid.Row="3" Grid.Column="0" Margin="0,24,12,8"/>
+
+            <TextBlock Grid.Row="3" Grid.Column="1" Text="CPF/CNPJ do Emitente:"/>
+            <TextBox x:Name="TxtCpfCnpj" Grid.Row="3" Grid.Column="1" Margin="0,24,0,8"/>
+
+            <!-- Cidade do Banco -->
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="Cidade (Agência):"/>
+            <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,24,0,8">
+                <TextBox x:Name="TxtCidadeBanco" IsReadOnly="True" MinWidth="260"/>
+                <Button Content="Buscar Cidade" Margin="8,0,0,0" Click="BtnBuscarCidade_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="OK" Width="110" Margin="0,0,10,0" Click="BtnOk_Click"/>
+            <Button Content="Cancelar" Width="110" Click="BtnCancel_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,31 @@
+<Window x:Class="PDV_MedusaX8.ProdutosTesteWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Produtos de Teste" Height="380" Width="600"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <GroupBox Header="Selecione um produto de teste">
+            <ListView Name="LstProdutos" SelectionMode="Single">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Header="Código" Width="150" DisplayMemberBinding="{Binding Code}"/>
+                        <GridViewColumn Header="Descrição" Width="300" DisplayMemberBinding="{Binding Description}"/>
+                        <GridViewColumn Header="Preço" Width="100" DisplayMemberBinding="{Binding PriceFormatted}"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </GroupBox>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <TextBlock Text="Qtd:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBox Name="TxtQtd" Width="80" Text="1"/>
+            <Button Content="Adicionar" Width="100" Margin="10,0,10,0" Click="BtnAdicionar_Click"/>
+            <Button Content="Cancelar" Width="100" Click="BtnCancelar_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

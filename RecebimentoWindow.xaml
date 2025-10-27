@@ -1,0 +1,96 @@
+<Window x:Class="PDV_MedusaX8.RecebimentoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Receber Carnê/Boleto" Height="540" Width="900"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="3*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Filtro de títulos -->
+        <StackPanel Grid.Column="0" Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Buscar:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+            <TextBox Name="TxtFiltro" Width="240" KeyUp="TxtFiltro_KeyUp"/>
+        </StackPanel>
+
+        <!-- Lista de títulos em aberto -->
+        <DataGrid Name="DgReceivables" Grid.Column="0" Grid.Row="1" AutoGenerateColumns="False" SelectionChanged="DgReceivables_SelectionChanged">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Documento" Binding="{Binding DocumentNumber}" Width="120"/>
+                <DataGridTextColumn Header="Cliente" Binding="{Binding CustomerName}" Width="*"/>
+                <DataGridTextColumn Header="CPF/CNPJ" Binding="{Binding CustomerDoc}" Width="140"/>
+                <DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="90"/>
+                <DataGridTextColumn Header="Venc." Binding="{Binding DueDate}" Width="110"/>
+                <DataGridTextColumn Header="Original" Binding="{Binding OriginalAmount}" Width="110"/>
+                <DataGridTextColumn Header="Pago" Binding="{Binding PaidAmount}" Width="100"/>
+                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Detalhes e recebimento -->
+        <GroupBox Grid.Column="1" Grid.Row="0" Grid.RowSpan="2" Header="Detalhes do título e recebimento" Margin="10,0,0,0">
+            <Grid Margin="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Se Carnê, listar parcelas -->
+                <TextBlock Text="Parcelas (Carnê)" FontWeight="Bold"/>
+                <DataGrid Name="DgInstallments" Grid.Row="1" AutoGenerateColumns="False" SelectionChanged="DgInstallments_SelectionChanged">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Parcela" Binding="{Binding ParcelNumber}" Width="80"/>
+                        <DataGridTextColumn Header="Venc." Binding="{Binding DueDate}" Width="110"/>
+                        <DataGridTextColumn Header="Valor" Binding="{Binding Amount}" Width="100"/>
+                        <DataGridTextColumn Header="Pago" Binding="{Binding PaidAmount}" Width="100"/>
+                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Forma de pagamento e valor -->
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
+                    <StackPanel Width="260">
+                        <TextBlock Text="Forma de pagamento"/>
+                        <ComboBox Name="CmbPaymentMethod" DisplayMemberPath="Name" SelectedValuePath="Code" Width="240"/>
+                    </StackPanel>
+                    <StackPanel Margin="20,0,0,0" Width="200">
+                        <TextBlock Text="Valor a receber"/>
+                        <TextBox Name="TxtAmount"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
+                    <StackPanel Width="300">
+                        <TextBlock Text="CPF/CNPJ"/>
+                        <TextBox Name="TxtDoc"/>
+                    </StackPanel>
+                    <StackPanel Margin="20,0,0,0" Width="300">
+                        <TextBlock Text="Nome"/>
+                        <TextBox Name="TxtName"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Row="4">
+                    <TextBlock Text="Observações"/>
+                    <TextBox Name="TxtNotes" Height="70" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+
+        <!-- Ações -->
+        <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Receber" Width="120" Margin="0,0,10,0" Click="BtnReceber_Click"/>
+            <Button Content="Cancelar" Width="120" Click="BtnCancelar_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

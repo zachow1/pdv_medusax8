@@ -1,0 +1,71 @@
+<Window x:Class="PDV_MedusaX8.ParcelamentoWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Selecionar Parcelas"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        ShowInTaskbar="False"
+        Background="#f5f5f5">
+    <Border BorderBrush="#e0e0e0" BorderThickness="1" Padding="12" Background="#f5f5f5">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Valor total a parcelar -->
+            <Grid Grid.Row="0" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Valor a parcelar:" FontWeight="Bold" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="1" Name="TxtValorTotal" Text="R$ 0,00" FontWeight="Bold" Foreground="#007bff" TextAlignment="Right"/>
+            </Grid>
+
+            <!-- Seleção de número de parcelas -->
+            <Grid Grid.Row="1" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Número de parcelas:" VerticalAlignment="Center"/>
+                <ComboBox Grid.Column="1" Name="CmbParcelas" SelectionChanged="CmbParcelas_SelectionChanged" MinWidth="160">
+                    <ComboBoxItem Content="2"/>
+                    <ComboBoxItem Content="3"/>
+                    <ComboBoxItem Content="4"/>
+                    <ComboBoxItem Content="5"/>
+                    <ComboBoxItem Content="6"/>
+                    <ComboBoxItem Content="7"/>
+                    <ComboBoxItem Content="8"/>
+                    <ComboBoxItem Content="9"/>
+                    <ComboBoxItem Content="10"/>
+                    <ComboBoxItem Content="11"/>
+                    <ComboBoxItem Content="12"/>
+                </ComboBox>
+            </Grid>
+
+            <!-- Valor por parcela -->
+            <Grid Grid.Row="2" Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Valor por parcela:" VerticalAlignment="Center"/>
+                <TextBox Grid.Column="1" Name="TxtValorParcela" IsReadOnly="True" Text="R$ 0,00" FontWeight="Bold" HorizontalAlignment="Stretch"/>
+            </Grid>
+
+            <!-- Ações -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Cancelar" Margin="0,0,8,0" Click="Cancelar_Click"/>
+                <Button Content="Confirmar" Background="#28a745" Foreground="White" Click="Confirmar_Click"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

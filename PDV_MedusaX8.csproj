@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>PDV_MedusaX8</AssemblyName>
+    <RootNamespace>PDV_MedusaX8</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\logo_medusax8.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
+    <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
+  </ItemGroup>
+  <!-- Excluir arquivos de backup da compilação -->
+  <ItemGroup>
+    <Page Remove="backup_sistema\**\*.xaml" />
+    <Compile Remove="backup_sistema\**\*.cs" />
+    <Resource Remove="backup_sistema\**\*" />
+    <None Remove="backup_sistema\**\*" />
+
+    <Page Remove="backup_Layout principal\**\*.xaml" />
+    <Compile Remove="backup_Layout principal\**\*.cs" />
+    <Resource Remove="backup_Layout principal\**\*" />
+    <None Remove="backup_Layout principal\**\*" />
+  </ItemGroup>
+  <!-- Excluir pastas de versões e testes da compilação -->
+  <ItemGroup>
+    <Page Remove="v1.1\**\*.xaml" />
+    <Compile Remove="v1.1\**\*.cs" />
+    <Resource Remove="v1.1\**\*" />
+    <None Remove="v1.1\**\*" />
+
+    <Page Remove="teste\**\*.xaml" />
+    <Compile Remove="teste\**\*.cs" />
+    <Resource Remove="teste\**\*" />
+    <None Remove="teste\**\*" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="medusax8.db">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

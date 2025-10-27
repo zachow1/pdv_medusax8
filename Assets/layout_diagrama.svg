@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <defs>
+    <style>
+      .box { fill: #ffffff; stroke: #999; stroke-width: 2; }
+      .area { fill: #f8f9fb; stroke: #b0b0b0; stroke-width: 2; }
+      .title { font: 700 18px 'Segoe UI', Arial, sans-serif; fill: #333; }
+      .label { font: 600 14px 'Segoe UI', Arial, sans-serif; fill: #333; }
+      .sublabel { font: 12px 'Segoe UI', Arial, sans-serif; fill: #555; }
+      .legend { font: 12px 'Segoe UI', Arial, sans-serif; fill: #333; }
+      .key { font: 600 12px 'Segoe UI', Arial, sans-serif; fill: #222; }
+      .note { font: 12px 'Segoe UI', Arial, sans-serif; fill: #666; }
+      .accent { fill: #e9f2ff; stroke: #6ca8ff; }
+      .accent2 { fill: #eaf7ea; stroke: #70c070; }
+      .accent3 { fill: #fdeaea; stroke: #e57373; }
+    </style>
+  </defs>
+
+  <!-- Moldura da janela -->
+  <rect x="20" y="20" width="1240" height="760" class="box"/>
+  <text x="30" y="45" class="title">PDV MedusaX8 — Mapa do Layout (MainWindow)</text>
+
+  <!-- Grid.Row=0: Barra de Janela (30px) -->
+  <rect x="30" y="60" width="1220" height="40" class="area"/>
+  <text x="40" y="85" class="label">Grid.Row=0 — Barra de Janela (30px)</text>
+  <text x="40" y="105" class="sublabel">Minimizar | Maximizar/Restaurar | Fechar (botões à direita)</text>
+
+  <!-- Grid.Row=1: Painel de Status (Auto) -->
+  <rect x="30" y="110" width="1220" height="80" class="area"/>
+  <text x="40" y="140" class="label">Grid.Row=1 — Painel de Status (Auto)</text>
+  <text x="40" y="160" class="sublabel">Esquerda: "Status do Caixa" | Direita: "Último Produto Registrado"</text>
+
+  <!-- Grid.Row=3: DockPanel (105px) -->
+  <rect x="30" y="675" width="1220" height="105" class="area"/>
+  <!-- Barra de Atalhos (80px) -->
+  <rect x="40" y="685" width="1200" height="80" class="accent"/>
+  <text x="50" y="710" class="label">Grid.Row=3 — DockPanel Top: Barra de Atalhos (80px)</text>
+  <text x="50" y="730" class="sublabel">Botões F1..F10, CTRL+P, CTRL+L, etc. — estilo ShortcutButtonStyle</text>
+  <!-- Rodapé (25px) -->
+  <rect x="40" y="770" width="1200" height="25" class="accent2"/>
+  <text x="50" y="787" class="label">Grid.Row=3 — DockPanel Bottom: Rodapé (25px)</text>
+
+  <!-- Grid.Row=2: Conteúdo Principal (*) -->
+  <rect x="30" y="190" width="1220" height="485" class="area"/>
+  <text x="40" y="210" class="label">Grid.Row=2 — Conteúdo Principal (*)</text>
+  <text x="40" y="230" class="sublabel">Colunas: 65* | 10 | 35* — Margem atual: 10,0,10,0</text>
+
+  <!-- Coluna esquerda (65*) -->
+  <rect x="40" y="240" width="800" height="465" class="box"/>
+  <text x="50" y="260" class="label">Esquerda (65*)</text>
+  <!-- DataGrid (linha *) -->
+  <rect x="50" y="270" width="780" height="345" class="box"/>
+  <text x="60" y="290" class="label">DataGrid — DgvProdutos</text>
+  <text x="60" y="310" class="sublabel">Colunas: Item | Código | Descrição | Qt. | Vl. Unit. | Total</text>
+  <!-- Totais (linha 120px) -->
+  <rect x="50" y="620" width="780" height="85" class="box"/>
+  <text x="60" y="640" class="label">Resumo de Totais (120px)</text>
+  <text x="60" y="660" class="sublabel">Subtotal | Desconto | TOTAL</text>
+
+  <!-- Coluna direita (35*) -->
+  <rect x="850" y="240" width="390" height="465" class="box"/>
+  <text x="860" y="260" class="label">Direita (35*)</text>
+  <!-- Logo/Imagem (linha *) -->
+  <rect x="860" y="270" width="370" height="380" class="box"/>
+  <text x="870" y="290" class="label">Imagem/Logo — ProductImageDisplay</text>
+  <text x="870" y="310" class="sublabel">Source: /Assets/logo_medusax8.png | Stretch: Uniform</text>
+  <!-- Entrada (linha 80px) -->
+  <rect x="860" y="660" width="370" height="45" class="box"/>
+  <text x="870" y="680" class="label">Entrada — QTD + InputCodeField</text>
+  <text x="870" y="700" class="sublabel">TextBox: "DIGITE O CÓDIGO DE PRODUTO" (Bold, 18px)</text>
+
+  <!-- Legenda de Recursos/Estilos -->
+  <rect x="940" y="60" width="310" height="120" class="box"/>
+  <text x="950" y="80" class="label">Recursos (Window.Resources)</text>
+  <text x="955" y="100" class="legend">BrFundoApp = SolidColorBrush(CorFundoApp=#ffffff)</text>
+  <text x="955" y="118" class="legend">BrPrimariaAcao = SolidColorBrush(#007bff)</text>
+  <text x="955" y="136" class="legend">BrFinalizar = SolidColorBrush(#28a745)</text>
+  <text x="955" y="154" class="legend">BrCancelar = SolidColorBrush(#dc3545)</text>
+  <text x="955" y="172" class="legend">BrTexto = SolidColorBrush(#333333)</text>
+  <text x="955" y="190" class="legend">CorBorda = SolidColorBrush(#e0e0e0)</text>
+
+  <!-- Notas -->
+  <text x="40" y="700" class="note">Notas: Ajuste recente — redução total de ~15px na vertical: Grid.Row=2 (10px) + margem do logo (5px). Estrutura do layout mantida.</text>
+</svg>

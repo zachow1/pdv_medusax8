@@ -1,0 +1,37 @@
+# Build outputs
+bin/
+obj/
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet
+packages/
+*.nupkg
+
+# Logs
+logs/
+**/logs/
+
+# Databases and local data
+medusax8.db
+pdv.db
+
+# Test and release artifacts
+teste/
+backup_*/
+
+# OS junk
+Thumbs.db
+Desktop.ini
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.7z

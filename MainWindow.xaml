@@ -1,0 +1,469 @@
+<Window x:Class="PDV_MedusaX8.MainWindow" KeyDown="Window_KeyDown" Closing="MainWindow_Closing"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="PDV - MedusaX8"
+        WindowStyle="None" WindowState="Maximized" AllowsTransparency="False"
+        Background="#f8f8f8"
+        FontFamily="Segoe UI">
+
+    <Window.Resources>
+        <Color x:Key="CorFundoApp">#f8f8f8</Color>
+        <Color x:Key="CorPrimariaAcao">#007bff</Color>
+        <Color x:Key="CorFinalizar">#28a745</Color>
+        <Color x:Key="CorCancelar">#dc3545</Color>
+        <SolidColorBrush x:Key="CorBorda" Color="#e0e0e0"/>
+        <Color x:Key="CorTexto">#333333</Color>
+
+        <SolidColorBrush x:Key="BrFundoApp" Color="{StaticResource CorFundoApp}"/>
+        <SolidColorBrush x:Key="BrPrimariaAcao" Color="{StaticResource CorPrimariaAcao}"/>
+        <SolidColorBrush x:Key="BrFinalizar" Color="{StaticResource CorFinalizar}"/>
+        <SolidColorBrush x:Key="BrCancelar" Color="{StaticResource CorCancelar}"/>
+        <SolidColorBrush x:Key="BrTexto" Color="{StaticResource CorTexto}"/>
+
+        <Style x:Key="ShortcutButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="70"/>
+            <Setter Property="Height" Value="70"/>
+            <Setter Property="Background" Value="{StaticResource BrPrimariaAcao}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="5,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderThickness="0">
+                            <TextBlock Text="{TemplateBinding Content}"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#0056b3"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Placeholder (Watermark) styles -->
+        <Style x:Key="WatermarkTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Grid>
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                            <TextBlock x:Name="Watermark"
+                                       Text="{TemplateBinding Tag}"
+                                       Foreground="{StaticResource BrTexto}"
+                                       Opacity="0.5"
+                                       IsHitTestVisible="False"
+                                       Margin="10,0,5,0"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Center"
+                                       Visibility="Collapsed"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Text" Value="">
+                                <Setter TargetName="Watermark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="Text" Value="{x:Null}">
+                                <Setter TargetName="Watermark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <!-- Pulso suave do placeholder quando vazio e sem foco -->
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding Text, RelativeSource={RelativeSource TemplatedParent}}" Value=""/>
+                                    <Condition Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource TemplatedParent}}" Value="False"/>
+                                </MultiDataTrigger.Conditions>
+                                <MultiDataTrigger.EnterActions>
+                                    <BeginStoryboard Name="WatermarkPulse">
+                                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                            <DoubleAnimation Storyboard.TargetName="Watermark"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             From="0.4" To="0.7" Duration="0:0:1.5"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </MultiDataTrigger.EnterActions>
+                                <MultiDataTrigger.ExitActions>
+                                    <StopStoryboard BeginStoryboardName="WatermarkPulse"/>
+                                </MultiDataTrigger.ExitActions>
+                            </MultiDataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WatermarkTextBoxCenterStyle" TargetType="TextBox">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Grid>
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                            <TextBlock x:Name="Watermark"
+                                       Text="{TemplateBinding Tag}"
+                                       Foreground="White"
+                                       Opacity="0.5"
+                                       IsHitTestVisible="False"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Visibility="Collapsed"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Text" Value="">
+                                <Setter TargetName="Watermark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="Text" Value="{x:Null}">
+                                <Setter TargetName="Watermark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <!-- Grid raiz sem margem externa para usar 100% da janela -->
+    <Grid Background="{StaticResource BrFundoApp}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="38"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Topo (30px) com controles de janela -->
+        <Border Grid.Row="0" Panel.ZIndex="10" Margin="0,0,0,15" BorderBrush="{StaticResource CorBorda}" BorderThickness="0,0,0,0" Background="{StaticResource BrFundoApp}">
+            
+            <Grid>
+                <TextBlock Text="Sistema PDV MedusaX8 | Versão: 1.0.0 (DB: 5.1)"
+                           VerticalAlignment="Center" Margin="10,0,0,0"
+                           Foreground="{StaticResource BrTexto}" FontSize="12"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Content="-" Width="30" Click="MinimizeWindow" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" FontSize="14"/>
+                    <Button Content="&#9744;" Width="30" Click="MaximizeRestoreWindow" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" FontSize="14"/>
+                    <Button Name="BtnCloseWindow" Content="X" Width="30" Background="{StaticResource BrCancelar}" Foreground="White" Click="CloseWindow" FontSize="14"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Status/Info (Auto) -->
+        <Grid Grid.Row="1" Margin="0,5,0,15">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.5*"/>
+                <ColumnDefinition Width="99*"/>
+                <ColumnDefinition Width="0.5*"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="1" Background="#f5f5f5" Height="Auto" MinHeight="80" MaxHeight="120" CornerRadius="5"
+                    BorderBrush="{StaticResource CorBorda}" BorderThickness="0" Padding="0">
+                <Grid>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Status do Caixa: " Foreground="{StaticResource BrTexto}" FontSize="14"/>
+                        <TextBlock Text="CAIXA EM ATENDIMENTO" FontWeight="Bold" Foreground="{StaticResource BrPrimariaAcao}" FontSize="14"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="Último Produto Registrado: " Foreground="{StaticResource BrTexto}" FontSize="12"/>
+                        <TextBlock Text="Água Mineral Sem Gás (R$ 5,00)" FontWeight="Bold" Foreground="{StaticResource BrPrimariaAcao}" FontSize="12" Name="LastProductText"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Conteúdo Principal (*) -->
+        <Grid Grid.Row="2" Margin="8,5,8,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="65*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="35*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Coluna Esquerda - Itens e Totais -->
+            <Border Grid.Column="0" BorderBrush="{StaticResource CorBorda}" BorderThickness="0" Background="{StaticResource BrFundoApp}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="120"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Tabela com estilo moderno e sem linhas/sombras -->
+                    <Border Grid.Row="0" Background="#FFFFFF" CornerRadius="6" Padding="0" BorderThickness="0">
+                        <DataGrid Name="DgvProdutos" HeadersVisibility="Column" IsReadOnly="True"
+                                   AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                   GridLinesVisibility="None" RowHeight="36" SelectionMode="Single"
+                                   AlternationCount="2" Foreground="#10181a" FontSize="13"
+                                   FrozenColumnCount="2"
+                                   BorderThickness="0" Background="Transparent"
+                                   FocusVisualStyle="{x:Null}">
+                            <DataGrid.Resources>
+                                <!-- Cabeçalho: cor definida pelo cliente (#dce7e9) -->
+                                <Style TargetType="{x:Type DataGridColumnHeader}">
+                                    <Setter Property="Background" Value="#dce7e9"/>
+                                    <Setter Property="Foreground" Value="#10181a"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                    <Setter Property="Padding" Value="10,10,15,10"/>
+                                    <Setter Property="FontSize" Value="14"/>
+                                </Style>
+
+                                <!-- Remover realce azul de seleção/foco -->
+                                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="Transparent"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="Transparent"/>
+                                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="#10181a"/>
+
+                                <!-- Células: padding fino e sem bordas internas -->
+                                <Style TargetType="{x:Type DataGridCell}">
+                                    <Setter Property="Padding" Value="8,0,15,0"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                                    <Setter Property="Foreground" Value="#10181a"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="Transparent"/>
+                                            <Setter Property="Foreground" Value="#10181a"/>
+                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                        </Trigger>
+                                        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+
+                                <!-- Texto alinhado à direita (já existente, mantido) -->
+                                <Style x:Key="RightAlignStyle" TargetType="{x:Type TextBlock}">
+                                    <Setter Property="TextAlignment" Value="Right"/>
+                                    <Setter Property="Margin" Value="0,0,5,0"/>
+                                    <Setter Property="Foreground" Value="#10181a"/>
+                                </Style>
+                                <Style x:Key="QtColumnStyle" TargetType="{x:Type TextBlock}">
+                                    <Setter Property="TextAlignment" Value="Right"/>
+                                    <Setter Property="Margin" Value="0,0,5,0"/>
+                                    <Setter Property="Foreground" Value="#10181a"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCancellation}" Value="True">
+                                            <Setter Property="Foreground" Value="#8a0000"/>
+                                            <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+
+                                <!-- Alinhamentos adicionais para colunas -->
+                                <Style x:Key="LeftAlignStyle" TargetType="{x:Type TextBlock}">
+                                    <Setter Property="TextAlignment" Value="Left"/>
+                                    <Setter Property="Margin" Value="0,0,5,0"/>
+                                    <Setter Property="Foreground" Value="#10181a"/>
+                                </Style>
+                                <Style x:Key="CenterAlignStyle" TargetType="{x:Type TextBlock}">
+                                    <Setter Property="TextAlignment" Value="Center"/>
+                                    <Setter Property="Margin" Value="0,0,5,0"/>
+                                    <Setter Property="Foreground" Value="#10181a"/>
+                                </Style>
+
+                                <!-- Estilos conscientes de cancelamento (herdam alinhamentos) -->
+                                <Style x:Key="CancelAwareLeftStyle" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource LeftAlignStyle}">
+                                    <Setter Property="Foreground" Value="#10181a"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCancellation}" Value="True">
+                                            <Setter Property="Foreground" Value="#8a0000"/>
+                                            <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                                <Style x:Key="CancelAwareRightStyle" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource RightAlignStyle}">
+                                    <Setter Property="Foreground" Value="#10181a"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCancellation}" Value="True">
+                                            <Setter Property="Foreground" Value="#8a0000"/>
+                                            <Setter Property="TextDecorations" Value="Strikethrough"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+
+                                <!-- Linhas: zebra + hover clarinho -->
+                                <Style TargetType="{x:Type DataGridRow}">
+                                    <Setter Property="Background" Value="#FFFFFF"/>
+                                    <Setter Property="Foreground" Value="#10181a"/>
+                                    <Style.Triggers>
+                                        <!-- Linhas canceladas: fundo salmão claro + texto vinho escuro -->
+                                        <DataTrigger Binding="{Binding IsCancellation}" Value="True">
+                                            <Setter Property="Background" Value="#ffc0b5"/>
+                                            <Setter Property="Foreground" Value="#8a0000"/>
+                                        </DataTrigger>
+
+                                        <!-- Zebra apenas quando não cancelado (por ordem, será sobrescrito pelo trigger acima se cancelado) -->
+                                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                                            <Setter Property="Background" Value="#f9f9f9"/>
+                                        </Trigger>
+
+                                        <!-- Hover só quando não cancelado -->
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True"/>
+                                                <Condition Binding="{Binding IsCancellation}" Value="False"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Background" Value="#f0f8ff"/>
+                                        </MultiDataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.Resources>
+
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ITEM" Width="60" Binding="{Binding Item}" ElementStyle="{StaticResource CenterAlignStyle}"/>
+                                <DataGridTextColumn Header="CÓDIGO" Width="120" Binding="{Binding Codigo}" ElementStyle="{StaticResource LeftAlignStyle}"/>
+                                <DataGridTextColumn Header="DESCRIÇÃO" Width="*" Binding="{Binding Descricao}" ElementStyle="{StaticResource CancelAwareLeftStyle}"/>
+                                <DataGridTextColumn Header="QT." Width="80" Binding="{Binding Qt}" ElementStyle="{StaticResource QtColumnStyle}"/>
+                                <DataGridTextColumn Header="VL. UNIT." Width="120" Binding="{Binding VlUnit, StringFormat=R$ {0:N2}}" ElementStyle="{StaticResource CancelAwareRightStyle}"/>
+                                <DataGridTextColumn Header="TOTAL" Width="140" Binding="{Binding Total, StringFormat=R$ {0:N2}}" ElementStyle="{StaticResource CancelAwareRightStyle}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+
+                    <StackPanel Grid.Row="1" Orientation="Vertical" Margin="10">
+                        <Grid>
+                            <TextBlock Text="Subtotal:" HorizontalAlignment="Left" FontSize="16"/>
+                            <TextBlock Name="LblSubtotal" Text="R$ 0,00" HorizontalAlignment="Right" FontWeight="Bold" FontSize="16"/>
+                        </Grid>
+                        <Grid Margin="0,5,0,0">
+                            <TextBlock Text="Desconto:" HorizontalAlignment="Left" FontSize="16"/>
+                            <TextBlock Name="LblDescontoTotal" Text="R$ 0,00" HorizontalAlignment="Right" FontWeight="Bold" FontSize="16"/>
+                        </Grid>
+                        <Grid Margin="0,10,0,0">
+                            <TextBlock Text="TOTAL:" HorizontalAlignment="Left" FontWeight="Bold" Foreground="{StaticResource BrPrimariaAcao}" FontSize="24"/>
+                            <TextBlock Name="LblFinalTotal" Text="R$ 241,00" HorizontalAlignment="Right" FontWeight="Bold" Foreground="{StaticResource BrPrimariaAcao}" FontSize="24"/>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Coluna Direita - Imagem e Ações -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="80"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" BorderBrush="{StaticResource CorBorda}" BorderThickness="0" Background="{StaticResource BrFundoApp}" Margin="0,0,0,5">
+                    <Image Source="/Assets/logo_medusax8.png" Stretch="Uniform" Name="ProductImageDisplay"/>
+                </Border>
+
+                <Border Grid.Row="1" BorderBrush="{StaticResource BrPrimariaAcao}" BorderThickness="3">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="30*"/>
+                            <ColumnDefinition Width="70*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Background="{StaticResource BrPrimariaAcao}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <!-- Removido TextBlock "QTD" e a segunda linha -->
+
+                                <TextBox Name="InputQtyField"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"
+                                         Margin="6,4,6,6"
+                                         FontSize="18" FontWeight="Bold"
+                                         Background="Transparent" Foreground="White"
+                                         BorderThickness="0"
+                                         Padding="8,0,8,0"
+                                         HorizontalContentAlignment="Center"
+                                         VerticalContentAlignment="Center"
+                                         IsReadOnly="True"
+                                         Focusable="False"
+                                         IsTabStop="False"
+                                         ContextMenu="{x:Null}"
+                                         AllowDrop="False"
+                                         PreviewMouseDown="RedirectQtyClickToCode"
+                                         Style="{StaticResource WatermarkTextBoxCenterStyle}"
+                                         Tag="QTD" />
+                            </Grid>
+                        </Border>
+
+                        <TextBox Name="InputCodeField" Grid.Column="1" KeyDown="InputCodeField_KeyDown"
+                                 Background="{StaticResource BrFundoApp}"
+                                 Foreground="{StaticResource BrTexto}"
+                                 FontWeight="Bold" FontSize="18"
+                                 VerticalContentAlignment="Center"
+                                 BorderThickness="0"
+                                 Padding="10,0,5,0"
+                                 Style="{StaticResource WatermarkTextBoxStyle}"
+                                 Tag="DIGITE O CÓDIGO DE PRODUTO"
+                                 TextChanged="InputCodeField_TextChanged"/>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Rodapé (DockPanel, 105px) -->
+        <DockPanel Grid.Row="3" Background="{StaticResource BrFundoApp}" Margin="0,0,0,0">
+
+            <Border DockPanel.Dock="Top" Height="80" Margin="0,5,0,10"
+                    BorderBrush="{StaticResource CorBorda}" BorderThickness="0"
+                    Background="{StaticResource BrFundoApp}">
+
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <StackPanel Orientation="Horizontal" Margin="5">
+                        <Button Content="F3 &#x0a; PAGAMENTO" Style="{StaticResource ShortcutButtonStyle}" Background="{StaticResource BrFinalizar}" Click="ShortcutAction"/>
+                        <Button Content="SHIFT+D &#x0a; Desconto Item" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="F1 &#x0a; Cancelar Item" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="F5 &#x0a; Cancelar Venda" Style="{StaticResource ShortcutButtonStyle}" Background="{StaticResource BrCancelar}" Click="ShortcutAction"/>
+
+                        <Separator Margin="10,0" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"/>
+
+                        <Button Content="F4 &#x0a; Configurações" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Name="BtnClienteShortcut" Tag="cliente" Content="F7 &#x0a; Cliente" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Tag="consumidor" Content="F12 &#x0a; Consumidor" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="F8 &#x0a; Produtos Teste" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="F6 &#x0a; Consultar" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="F10 &#x0a; Balança" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <!-- Removido: <Button Content="CTRL+P &#x0a; Nota" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/> -->
+                        <Button Content="CTRL+L &#x0a; Sangria" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="CTRL+S &#x0a; Suprim." Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="CTRL+R &#x0a; Receber Título" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="CTRL+F &#x0a; Fechar Caixa" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="CTRL+A &#x0a; Abertura" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="CTRL+O &#x0a; Operador" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Tag="NFCe" Content="NFC-e &#x0a; Acompanhar" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Content="Importar Pedido ERP" Style="{StaticResource ShortcutButtonStyle}" Click="OpenERPImport_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <Border DockPanel.Dock="Bottom" Height="25" Background="{StaticResource BrFundoApp}">
+                <Grid Margin="5,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                               Text="Operador: 001 João Silva | Caixa: 01"
+                               FontWeight="Bold" FontSize="10"/>
+                    <TextBlock x:Name="TxtStatusBar" Grid.Column="1" VerticalAlignment="Center"
+                               Text="" FontSize="10" TextAlignment="Right"/>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <TextBlock Text="Hora: " FontSize="10" VerticalAlignment="Center"/>
+                        <TextBlock Name="CurrentTimeText" FontSize="10" FontWeight="Bold" Margin="0,0,10,0" VerticalAlignment="Center"/>
+
+                        <TextBlock Text="TEF: " FontSize="10" VerticalAlignment="Center"/>
+                        <TextBlock Text="OK" FontSize="10" FontWeight="Bold" Foreground="{StaticResource BrFinalizar}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+
+                        <TextBlock Text="Notas: " FontSize="10" VerticalAlignment="Center"/>
+                        <TextBlock Text="ONLINE" FontSize="10" FontWeight="Bold" Foreground="{StaticResource BrFinalizar}" Margin="0,0,10,0" VerticalAlignment="Center"/>
+
+                        <TextBlock Text="Internet: " FontSize="10" VerticalAlignment="Center"/>
+                        <TextBlock Text="CONECTADO" FontSize="10" FontWeight="Bold" Foreground="{StaticResource BrFinalizar}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DockPanel>
+    </Grid>
+</Window>
