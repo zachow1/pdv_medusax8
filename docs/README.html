@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PDV Medusa X8 — Guia Técnico para Devs</title>
+  <style>
+    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; line-height: 1.55; color: #222; margin: 24px; }
+    code, pre { background: #f5f7fa; border: 1px solid #e5e9f2; border-radius: 6px; padding: 2px 6px; }
+    pre { padding: 12px; overflow-x: auto; }
+    h1 { font-size: 24px; margin: 0 0 16px; }
+    h2 { font-size: 20px; margin: 24px 0 8px; }
+    h3 { font-size: 16px; margin: 18px 0 6px; }
+    ul { margin: 8px 0 12px; }
+    li { margin: 4px 0; }
+    a { color: #0b72ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .muted { color: #666; }
+    .toc a { display: inline-block; margin: 4px 0; }
+  </style>
+  <meta name="description" content="Guia técnico do PDV Medusa X8: arquitetura, serviços, fluxos, UI e instruções de desenvolvimento." />
+</head>
+<body>
+  <h1>PDV Medusa X8 — Guia Técnico para Devs</h1>
+  <p class="muted">Este documento dá uma visão técnica do sistema para orientar desenvolvimento, manutenção e extensões.</p>
+
+  <h2>Sumário</h2>
+  <div class="toc">
+    <a href="#visao-geral">Visão Geral</a><br />
+    <a href="#arquitetura">Arquitetura</a><br />
+    <a href="#modulos-principais">Módulos Principais</a><br />
+    <a href="#fluxos-de-sistema">Fluxos de Sistema</a><br />
+    <a href="#integracoes-servicos">Integrações e Serviços</a><br />
+    <a href="#configuracoes">Configurações</a><br />
+    <a href="#persistencia-dados">Persistência e Dados</a><br />
+    <a href="#ui-principal">UI Principal</a><br />
+    <a href="#sincronizacao">Sincronização</a><br />
+    <a href="#ferramentas-suporte">Ferramentas de Suporte</a><br />
+    <a href="#build-execucao">Build e Execução</a><br />
+    <a href="#convencoes-codigo">Convenções de Código</a><br />
+    <a href="#logging-erros">Logging e Tratamento de Erros</a><br />
+    <a href="#contribuicao">Diretrizes de Contribuição</a><br />
+    <a href="#docs-relacionados">Docs Relacionados</a>
+  </div>
+
+  <h2 id="visao-geral">Visão Geral</h2>
+  <ul>
+    <li>Aplicação WPF (.NET) voltada ao ponto de venda (PDV).</li>
+    <li>Suporta emissão de NFC-e, TEF, impressão, gestão de caixa e sincronização.</li>
+    <li>Interface principal em <code>MainWindow</code> com componentes para carrinho, busca de produtos, consumidor e pagamentos.</li>
+  </ul>
+
+  <h2 id="arquitetura">Arquitetura</h2>
+  <ul>
+    <li><strong>Camada de UI</strong>: janelas WPF (ex.: <code>MainWindow.xaml</code>, <code>PaymentWindow.xaml</code>, <code>SettingsWindow.xaml</code>).</li>
+    <li><strong>Serviços</strong>: lógica de negócio e integrações (ex.: <code>NFCeService</code>, <code>PrintingService</code>, <code>TEFManager</code>).</li>
+    <li><strong>Modelos</strong>: DTOs e entidades (ex.: <code>CartItem</code>, <code>Empresa</code>, <code>PaymentMethod</code>).</li>
+    <li><strong>Persistência</strong>: SQLite via <code>DbHelper</code>, arquivos locais <code>medusax8.db</code> e <code>pdv.db</code>.</li>
+  </ul>
+
+  <h2 id="modulos-principais">Módulos Principais</h2>
+  <h3>UI/WPF</h3>
+  <ul>
+    <li><code>MainWindow</code>: fluxo principal de vendas, exibição de logo/placeholder, carrinho, atalhos, integração com serviços.</li>
+    <li><code>SettingsWindow</code>: opções de sistema (logo personalizado, impressoras, TEF, NFC-e), persiste configurações em SQLite.</li>
+    <li>Janelas auxiliares: abertura/fechamento de caixa, sangria/suprimento, descontos, busca de clientes/produtos e pagamentos.</li>
+  </ul>
+  <h3>Serviços</h3>
+  <ul>
+    <li><code>SessionManager</code>: controle de sessão (login/logout, usuário atual, estado do PDV).</li>
+    <li><code>NFCeService</code>: emissão NFC-e, comunicação com SEFAZ, monitoramento (<code>NFCeMonitorWindow</code>).</li>
+    <li><code>PrintingService</code>: impressão de documentos fiscais, comprovantes e relatórios.</li>
+    <li><code>TEFManager</code> e <code>ITEFProvider</code>: integração TEF com provedores (<code>CapptaProvider</code>, <code>PayGoProvider</code>, <code>SitefProvider</code>).</li>
+    <li><code>SyncService</code> / <code>SyncApi</code>: sincronização com ERP/servidor, APIs e fila de tarefas.</li>
+    <li><code>PdvStatusReportService</code>: coleta e envio de status do PDV.</li>
+    <li><code>AutoSyncManager</code>: agendamento/sincronização automática.</li>
+    <li><code>MariaDbService</code>: utilitário de integração com MariaDB (quando aplicável).</li>
+  </ul>
+  <h3>Persistência</h3>
+  <ul>
+    <li><code>DbHelper</code>: acesso SQLite, execução de queries, migrações básicas.</li>
+    <li>Arquivos de banco em disco: <code>medusax8.db</code>, <code>pdv.db</code> (ignorados no VCS conforme <code>.gitignore</code>).</li>
+  </ul>
+
+  <h2 id="fluxos-de-sistema">Fluxos de Sistema</h2>
+  <h3>Solicitação de Consumidor</h3>
+  <ul>
+    <li>Com carrinho vazio, na primeira interação de venda (ex.: foco em campo de código), se <code>HasConsumer == false</code>, solicita dados do consumidor.</li>
+    <li>Para detalhes e regras, ver <a href="solicitar_consumidor.md">docs/solicitar_consumidor.md</a>.</li>
+  </ul>
+  <h3>Pagamentos</h3>
+  <ul>
+    <li><code>PaymentWindow</code> integra com TEF via <code>TEFManager</code> e provedores de pagamento selecionados.</li>
+    <li>Suporta parcelamentos, cancelamentos e impressão de comprovantes.</li>
+  </ul>
+  <h3>Caixa</h3>
+  <ul>
+    <li>Abertura, suprimento, sangria e fechamento em janelas dedicadas, refletindo registros de caixa.</li>
+    <li>Estados do caixa e restrições de operações são validados via serviços e sessão.</li>
+  </ul>
+
+  <h2 id="integracoes-servicos">Integrações e Serviços</h2>
+  <ul>
+    <li><strong>TEF</strong>: implementar novos provedores via interface <code>ITEFProvider</code>; registrar no <code>TEFManager</code>.</li>
+    <li><strong>NFC-e</strong>: configuração de certificado, ambiente de homologação/produção e endpoints; emissão e consulta via <code>NFCeService</code>.</li>
+    <li><strong>ERP/Sync</strong>: endpoints definidos em <code>SyncApi</code>; tarefas agendadas via <code>AutoSyncManager</code>.</li>
+    <li><strong>Impressão</strong>: templates e rotinas em <code>PrintingService</code>; selecionar impressora em <code>SettingsWindow</code>.</li>
+  </ul>
+
+  <h2 id="configuracoes">Configurações</h2>
+  <ul>
+    <li>Janela <code>SettingsWindow</code> persiste opções (logo, impressão, TEF, NFC-e) em SQLite.</li>
+    <li><strong>Logo personalizado</strong>: caminho do arquivo e flag de visibilidade são salvos; após <em>Salvar</em>, a <code>MainWindow</code> chama <code>RefreshCustomLogo()</code> para atualizar a UI.</li>
+    <li>Quando a flag de exibir logo está ativa e não há imagem válida, é mostrado um placeholder vermelho na área principal.</li>
+  </ul>
+
+  <h2 id="persistencia-dados">Persistência e Dados</h2>
+  <ul>
+    <li>O acesso a dados usa <code>DbHelper</code>; evite acoplar UI à camada de persistência.</li>
+    <li>Banco local em arquivo: <code>medusax8.db</code> e/ou <code>pdv.db</code>; <code>.gitignore</code> evita versionar esses arquivos.</li>
+    <li>Use transações para operações críticas (venda, caixa) e manipule exceções com feedback ao usuário.</li>
+  </ul>
+
+  <h2 id="ui-principal">UI Principal</h2>
+  <ul>
+    <li>Logo padrão (<code>ProductImageDisplay</code>) e <strong>logo personalizado</strong> (<code>CustomLogoImage</code>) coexistem, com fallback para <strong>placeholder vermelho</strong> (<code>ExampleLogoPlaceholder</code>).</li>
+    <li>Regras de visibilidade em <code>MainWindow.xaml.cs</code> — método <code>LoadCustomLogo()</code> controla o que aparece com base nas configurações e existência do arquivo.</li>
+    <li>Atalhos de teclado e interações comuns acionam buscas, descontos, e abertura de janelas auxiliares.</li>
+  </ul>
+
+  <h2 id="sincronizacao">Sincronização</h2>
+  <ul>
+    <li><code>SyncService</code> e <code>SyncApi</code> tratam envio/recebimento de dados.</li>
+    <li><code>AutoSyncManager</code> organiza agendamentos e repetição de tarefas em caso de falhas.</li>
+    <li>Relatórios de status (<code>PdvStatusReportService</code>) podem alimentar monitoramento externo.</li>
+  </ul>
+
+  <h2 id="ferramentas-suporte">Ferramentas de Suporte</h2>
+  <ul>
+    <li><code>SupportSyncTool</code>: utilitário auxiliar para configuração/criptografia de credenciais e parâmetros de sincronização.</li>
+    <li><code>SyncToolStandalone</code>: ferramenta standalone para operações de sync fora do PDV principal.</li>
+  </ul>
+
+  <h2 id="build-execucao">Build e Execução</h2>
+  <ul>
+    <li>Requisitos: .NET SDK atual e Windows (WPF).</li>
+    <li>Build: <code>dotnet build PDV_MedusaX8.csproj</code></li>
+    <li>Execução: via Visual Studio (F5) ou <code>dotnet run --project PDV_MedusaX8.csproj</code></li>
+    <li><code>.gitignore</code> exclui <code>bin/</code>, <code>obj/</code>, <code>.vs/</code>, <code>packages/</code>, <code>logs/</code>, bancos locais e <code>dist/</code>.</li>
+  </ul>
+
+  <h2 id="convencoes-codigo">Convenções de Código</h2>
+  <ul>
+    <li>Mantenha responsabilidade clara por classe (UI, serviço, modelo).</li>
+    <li>Evite lógica complexa na UI; delegue para serviços.</li>
+    <li>Use nomes descritivos, evite abreviações obscuras; siga padrões C#.</li>
+    <li>Centralize chamadas externas (TEF/NFC-e/ERP) em serviços dedicados.</li>
+  </ul>
+
+  <h2 id="logging-erros">Logging e Tratamento de Erros</h2>
+  <ul>
+    <li>Registros em <code>logs/</code> (ignorados no VCS); use níveis de log coerentes.</li>
+    <li>Trate exceções com <code>try/catch</code>, informe o usuário e registre detalhes técnicos.</li>
+    <li>Preferir mensagens amigáveis na UI e detalhes técnicos no log.</li>
+  </ul>
+
+  <h2 id="contribuicao">Diretrizes de Contribuição</h2>
+  <ul>
+    <li>Crie PRs focados e pequenos; &quot;linhas vermelhas&quot;: não quebrar emissão, pagamentos ou fluxos de caixa.</li>
+    <li>Adicione documentação ao modificar fluxos principais (venda, pagamento, consumidor, sync).</li>
+    <li>Respeite <code>.gitignore</code> e não versione artefatos (<code>dist/</code>, bancos, pacotes, logs).</li>
+  </ul>
+
+  <h2 id="docs-relacionados">Docs Relacionados</h2>
+  <ul>
+    <li><a href="funcionalidades_roadmap.html">funcionalidades_roadmap.html</a></li>
+    <li><a href="solicitar_consumidor.md">solicitar_consumidor.md</a></li>
+    <li>Assets: <code>Assets/</code> (imagens, diagramas)</li>
+  </ul>
+
+  <hr />
+  <p class="muted">© PDV Medusa X8 — Este guia é destinado aos desenvolvedores do sistema.</p>
+</body>
+</html>
