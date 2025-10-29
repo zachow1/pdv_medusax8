@@ -36,6 +36,24 @@ namespace PDV_MedusaX8
                     Value TEXT
                 );";
             cmd.ExecuteNonQuery();
+
+            // Migração defensiva: garantir coluna CashRegisterNumber
+            var cols = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var cmdInfo = con.CreateCommand())
+            {
+                cmdInfo.CommandText = "PRAGMA table_info(CashMovements)";
+                using var rd = cmdInfo.ExecuteReader();
+                while (rd.Read())
+                {
+                    cols.Add(rd.GetString(1));
+                }
+            }
+            if (!cols.Contains("CashRegisterNumber"))
+            {
+                using var cmdAlter = con.CreateCommand();
+                cmdAlter.CommandText = "ALTER TABLE CashMovements ADD COLUMN CashRegisterNumber INTEGER";
+                cmdAlter.ExecuteNonQuery();
+            }
         }
 
         private void BtnSalvar_Click(object sender, RoutedEventArgs e)
@@ -48,7 +66,7 @@ namespace PDV_MedusaX8
             }
 
             var motivo = TxtMotivo.Text?.Trim();
-            string operador = Environment.UserName;
+            string operador = PDV_MedusaX8.Services.SessionManager.CurrentUser ?? Environment.UserName;
 
             try
             {
@@ -59,11 +77,12 @@ namespace PDV_MedusaX8
                 // Inserir suprimento
                 using (var cmd = con.CreateCommand())
                 {
-                    cmd.CommandText = @"INSERT INTO CashMovements (Type, Amount, Reason, Operator) VALUES ($type, $amount, $reason, $operator)";
+                    cmd.CommandText = @"INSERT INTO CashMovements (Type, Amount, Reason, Operator, CashRegisterNumber) VALUES ($type, $amount, $reason, $operator, $cash)";
                     cmd.Parameters.AddWithValue("$type", "SUPRIMENTO");
                     cmd.Parameters.AddWithValue("$amount", (double)valor);
                     cmd.Parameters.AddWithValue("$reason", string.IsNullOrWhiteSpace(motivo) ? (object)DBNull.Value : motivo);
                     cmd.Parameters.AddWithValue("$operator", operador);
+                    cmd.Parameters.AddWithValue("$cash", GetCashRegisterNumber(con));
                     cmd.ExecuteNonQuery();
                 }
 
@@ -109,6 +128,27 @@ namespace PDV_MedusaX8
         {
             DialogResult = false;
             Close();
+        }
+        private static int GetCashRegisterNumber(SqliteConnection con)
+        {
+            int cashNumber = 1;
+            try
+            {
+                using var cmdGet = con.CreateCommand();
+                cmdGet.CommandText = "SELECT Value FROM Settings WHERE Key='CashRegisterNumber' LIMIT 1";
+                var v = cmdGet.ExecuteScalar();
+                if (v != null && v != DBNull.Value && int.TryParse(v.ToString(), out var n)) cashNumber = n;
+                if (cashNumber == 0)
+                {
+                    using var cmdSerie = con.CreateCommand();
+                    cmdSerie.CommandText = "SELECT Serie FROM ConfiguracoesNFCe LIMIT 1";
+                    var sv = cmdSerie.ExecuteScalar();
+                    if (sv != null && sv != DBNull.Value && int.TryParse(sv.ToString(), out var s)) cashNumber = s;
+                }
+                if (cashNumber == 0) cashNumber = 1;
+            }
+            catch { }
+            return cashNumber;
         }
     }
 }

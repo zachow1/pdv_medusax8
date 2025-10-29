@@ -57,7 +57,7 @@
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button x:Name="BtnSelecionar" Content="Selecionar" Width="110" Margin="0,0,10,0" Click="BtnSelecionar_Click" IsEnabled="False"/>
-            <Button Content="Cancelar" Width="110" Click="BtnCancelar_Click"/>
+            <Button Content="Cancelar" Width="110" Click="BtnCancelar_Click" Padding="8,0,8,0"/>
         </StackPanel>
     </Grid>
 </Window>

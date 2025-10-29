@@ -59,8 +59,8 @@
         </Grid>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="OK" Width="110" Margin="0,0,10,0" Click="BtnOk_Click"/>
-            <Button Content="Cancelar" Width="110" Click="BtnCancel_Click"/>
+            <Button Content="Salvar" Width="110" Margin="0,0,10,0" Click="BtnOk_Click" Padding="8,0,8,0"/>
+            <Button Content="Cancelar" Width="110" Click="BtnCancel_Click" Padding="8,0,8,0"/>
         </StackPanel>
     </Grid>
 </Window>

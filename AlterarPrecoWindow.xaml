@@ -17,8 +17,8 @@
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,0">
             <TextBlock Text="NOVO VALOR:" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="Bold"/>
             <TextBox x:Name="TxtPreco" Width="120" PreviewTextInput="NumericOnly_PreviewTextInput"/>
-            <Button Content="ALTERAR/SALVAR" Margin="12,0,0,0" IsDefault="True" Click="BtnSalvar_Click" Padding="8,4"/>
-            <Button Content="CANCELAR" Margin="6,0,0,0" IsCancel="True" Padding="8,4"/>
+            <Button Content="Salvar" Margin="12,0,0,0" IsDefault="True" Click="BtnSalvar_Click" Padding="8,4"/>
+            <Button Content="Cancelar" Margin="6,0,0,0" IsCancel="True" Padding="8,4"/>
         </StackPanel>
     </Grid>
 </Window>

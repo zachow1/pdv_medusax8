@@ -25,6 +25,8 @@ pdv.db
 # Test and release artifacts
 teste/
 backup_*/
+v1.1/
+dist/
 
 # OS junk
 Thumbs.db
@@ -35,3 +37,4 @@ Desktop.ini
 *.tar
 *.tar.gz
 *.7z
+*_wpftmp.csproj

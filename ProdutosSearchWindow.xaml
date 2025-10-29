@@ -32,7 +32,7 @@
             <TextBlock Text="Qtd:" VerticalAlignment="Center" Margin="0,0,10,0"/>
             <TextBox Name="TxtQtd" Width="80" Text="1"/>
             <Button Content="Adicionar" Width="100" Margin="10,0,10,0" Click="BtnAdicionar_Click"/>
-            <Button Content="Fechar" Width="100" Click="BtnFechar_Click"/>
+            <Button Content="Cancelar" Width="100" Click="BtnFechar_Click" Padding="8,0,8,0"/>
         </StackPanel>
     </Grid>
 </Window>

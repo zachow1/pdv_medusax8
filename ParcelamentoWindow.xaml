@@ -63,8 +63,8 @@
 
             <!-- Ações -->
             <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Cancelar" Margin="0,0,8,0" Click="Cancelar_Click"/>
-                <Button Content="Confirmar" Background="#28a745" Foreground="White" Click="Confirmar_Click"/>
+                <Button Content="Cancelar" Margin="0,0,8,0" Click="Cancelar_Click" Padding="8,0,8,0"/>
+                <Button Content="Salvar" Background="#28a745" Foreground="White" Click="Confirmar_Click" Padding="8,0,8,0"/>
             </StackPanel>
         </Grid>
     </Border>

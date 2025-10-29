@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDV MedusaX8 — Funcionalidades e Roadmap</title>
+  <style>
+    :root {
+      --bg: #0f172a; /* slate-900 */
+      --panel: #111827; /* gray-900 */
+      --muted: #94a3b8; /* slate-400 */
+      --text: #e5e7eb; /* gray-200 */
+      --accent: #22d3ee; /* cyan-400 */
+      --ok: #10b981; /* emerald-500 */
+      --warn: #f59e0b; /* amber-500 */
+      --pending: #eab308; /* yellow-500 */
+      --danger: #ef4444; /* red-500 */
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif; }
+    header { padding: 28px 20px 12px; border-bottom: 1px solid #1f2937; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    h1 { margin: 0; font-size: 24px; letter-spacing: .2px; }
+    .subtitle { color: var(--muted); margin-top: 6px; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .card { background: var(--panel); border: 1px solid #1f2937; border-radius: 10px; padding: 16px; }
+    .card h2 { font-size: 18px; margin: 0 0 12px; color: var(--accent); }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; margin-left: 8px; border: 1px solid #1f2937; }
+    .ok { color: #052e16; background: #34d399; }
+    .pending { color: #3f2a02; background: #fde68a; }
+    .warn { color: #3b1d02; background: #fbbf24; }
+    .danger { color: #450a0a; background: #fca5a5; }
+    ul { margin: 0; padding-left: 18px; line-height: 1.5; }
+    li + li { margin-top: 6px; }
+    code { background: #0b1220; padding: 0 6px; border-radius: 6px; border: 1px solid #0b1324; color: #a5b4fc; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    footer { margin-top: 22px; color: var(--muted); font-size: 12px; }
+  </style>
+  <meta name="description" content="Resumo das funcionalidades e roadmap do PDV MedusaX8." />
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>PDV MedusaX8 — Funcionalidades e Roadmap</h1>
+      <div class="subtitle">Visão geral do que está pronto e do que vem a seguir.</div>
+    </div>
+  </header>
+  <main class="container">
+    <div class="grid">
+      <section class="card" aria-labelledby="feat-title">
+        <h2 id="feat-title">Funcionalidades atuais <span class="pill ok">Pronto</span></h2>
+        <ul>
+          <li>Autenticação de usuários via SQLite com <code>SHA-256</code> e semeadura inicial.</li>
+          <li>Autorização por perfil (<code>Role</code>): <code>admin</code>, <code>fiscal</code>, <code>operator</code>, <code>viewer</code>.</li>
+          <li>Acesso às configurações (F4 e Pagamento) condicionado a <code>admin</code> ou <code>fiscal</code>.</li>
+          <li>Inicialização de banco local segura (SQLite) com criação de tabelas do PDV.</li>
+          <li>Gestão de caixa: abertura, suprimento, sangria e fechamento, com logs.</li>
+          <li>Vendas e pagamentos: suporte a múltiplas formas e integração TEF (Cappta, PayGo, SiTef).</li>
+          <li>Impressão de comprovantes via serviço de impressão dedicado.</li>
+          <li>NFC-e: estrutura e serviços de monitoramento e status (em operação básica).</li>
+          <li>Relatório de status do PDV gerado em HTML: <code>docs/pdv_status.html</code>.</li>
+          <li>Sincronização com ERP (Support Sync Tool):
+            <ul>
+              <li>Clientes (Participantes ISclientes = 1).</li>
+              <li>Produtos.</li>
+              <li>Usuários, com normalização de senha (SHA-256), role e status ativo.</li>
+            </ul>
+          </li>
+          <li>AutoSync configurável para clientes e produtos (gatilhos e logs de execução).</li>
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="todo-title">
+        <h2 id="todo-title">O que está por fazer <span class="pill pending">Em andamento</span></h2>
+        <ul>
+          <li>AutoSync de Usuários integrado ao PDV (além da ferramenta de suporte).</li>
+          <li>Fluxo NFC-e completo (emissão, contingência, DANFE NFC-e e histórico detalhado).</li>
+          <li>Financeiro: sincronização de contas a receber, títulos, baixas e relatórios.</li>
+          <li>Perfis e regras avançadas por tela/ação; centralizar políticas de autorização.</li>
+          <li>Auditoria de segurança: política de senha, expiração e bloqueio por tentativas.</li>
+          <li>Experiência de erro mais guiada (mensagens e ações sugeridas na UI).</li>
+          <li>Testes automatizados e pipeline de build com checagens de qualidade.</li>
+          <li>Documentação ampliada e exemplos de configuração por ambiente.</li>
+        </ul>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px" aria-labelledby="links-title">
+      <h2 id="links-title">Links úteis</h2>
+      <ul>
+        <li>Status do PDV: <code>docs/pdv_status.html</code> (gerado em runtime).</li>
+        <li>Ferramenta de suporte (sincronização ERP): app WPF <code>SupportSyncTool</code>.</li>
+        <li>Configurações de Empresa: dentro do PDV em <em>Configurações &gt; Empresa</em>.</li>
+      </ul>
+      <footer>
+        Última atualização de conteúdo: manual. Mantenha este arquivo em VCS.
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

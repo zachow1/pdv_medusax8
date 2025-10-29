@@ -21,8 +21,8 @@
         </StackPanel>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button x:Name="BtnSalvar" Content="Salvar" Width="90" Height="30" Margin="0,0,8,0" Click="BtnSalvar_Click"/>
-            <Button x:Name="BtnCancelar" Content="Cancelar" Width="90" Height="30" Click="BtnCancelar_Click"/>
+            <Button x:Name="BtnSalvar" Content="Salvar" Width="90" Height="30" Margin="0,0,8,0" Click="BtnSalvar_Click" Padding="8,0,8,0"/>
+            <Button x:Name="BtnCancelar" Content="Cancelar" Width="90" Height="30" Click="BtnCancelar_Click" Padding="8,0,8,0"/>
         </StackPanel>
     </Grid>
 </Window>

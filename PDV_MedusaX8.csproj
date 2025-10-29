@@ -13,6 +13,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
+    <PackageReference Include="MySqlConnector" Version="2.3.7" />
     <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
   </ItemGroup>
   <!-- Excluir arquivos de backup da compilação -->
@@ -39,8 +40,25 @@
     <Resource Remove="teste\**\*" />
     <None Remove="teste\**\*" />
   </ItemGroup>
+  <!-- Excluir ferramentas auxiliares do build do app principal -->
+  <ItemGroup>
+    <Page Remove="SupportSyncTool\**\*.xaml" />
+    <Compile Remove="SupportSyncTool\**\*.cs" />
+    <Resource Remove="SupportSyncTool\**\*" />
+    <None Remove="SupportSyncTool\**\*" />
+
+    <Page Remove="SyncToolStandalone\**\*.xaml" />
+    <Compile Remove="SyncToolStandalone\**\*.cs" />
+    <Resource Remove="SyncToolStandalone\**\*" />
+    <None Remove="SyncToolStandalone\**\*" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="medusax8.db">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="docs\**\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

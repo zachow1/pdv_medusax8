@@ -115,6 +115,8 @@ namespace PDV_MedusaX8.Services
                 cmd.ExecuteNonQuery();
             }
 
+            try { AutoSyncManager.Instance.TriggerNFCeSync(); } catch { }
+
             // TODO: integrar ACBrLib para montar XML, assinar e enviar
             // Por ora, apenas persiste os dados mínimos para validação.
         }

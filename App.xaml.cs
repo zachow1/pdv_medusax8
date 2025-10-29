@@ -21,6 +21,19 @@ namespace PDV_MedusaX8
             // Inicializa pasta segura e migra/fortalece banco
             DbHelper.Initialize();
 
+            // Prepara log do AutoSync e gera relatório HTML de status do PDV
+            try
+            {
+                AutoSyncManager.Instance.EnsureLogTable();
+                var reportPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "docs", "pdv_status.html");
+                _ = Task.Run(async () =>
+                {
+                    try { await new PdvStatusReportService().GenerateHtmlAsync(reportPath); }
+                    catch { /* ignore */ }
+                });
+            }
+            catch { /* ignore */ }
+
             base.OnStartup(e);
         }
 

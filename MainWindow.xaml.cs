@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Globalization;
 using System.Text.RegularExpressions;
@@ -22,10 +24,12 @@ namespace PDV_MedusaX8
         private bool _modoAlteracaoPrecoF9 = false;
         private bool _f9Enabled = true;
         private bool _promptConsumerOnFirstItem = true;
+        // Controla se já foi exibido o prompt de consumidor nesta venda
+        private bool _consumerPromptedAlready = false;
         
         // Exigir F2 para iniciar venda
         private bool _requireF2ToStartSale = false;
-        private bool _saleStarted = true;
+        private bool _saleStarted = false;
         
         // Carrinho e Catálogo
         private readonly List<CartItem> _cartItems = new List<CartItem>();
@@ -45,14 +49,20 @@ namespace PDV_MedusaX8
         // Novo: cliente real selecionado (ID de cliente)
         public bool HasCustomerSelected => _consumerCustomerId.HasValue && _consumerCustomerId.Value > 0;
 
-        // Configurações do supervisor para sangria
+        // Configurações do supervisor
         private bool _requireSupervisorForSangria = false;
+        private bool _requireSupervisorForOpeningCash = false;
+        private bool _requireSupervisorForClosingCash = false;
         private string _supervisorCode = string.Empty;
         private string _supervisorPassword = string.Empty;
         private string _supervisorName = string.Empty;
         
         // Expor configuração e validação de supervisor
         public bool RequiresSupervisorForSangria => _requireSupervisorForSangria;
+        public bool RequiresSupervisorForOpeningCash => _requireSupervisorForOpeningCash;
+        public bool RequiresSupervisorForClosingCash => _requireSupervisorForClosingCash;
+        public string SupervisorCode => _supervisorCode;
+        public string SupervisorPassword => _supervisorPassword;
         public string SupervisorName => _supervisorName;
         public bool ValidateSupervisor(string code, string password)
         {
@@ -62,9 +72,105 @@ namespace PDV_MedusaX8
                    string.Equals(_supervisorPassword, p, StringComparison.Ordinal);
         }
 
+        private void TrySwitchOperator()
+        {
+            // Fluxo correto: manter sessão e caixa ativos, abrir login modal
+            var loginWindow = new LoginWindow(authorizationMode: true) { Owner = this };
+            var loginResult = loginWindow.ShowDialog();
+
+            if (loginResult == true && !string.IsNullOrWhiteSpace(loginWindow.LoggedUser))
+            {
+                var newUser = loginWindow.LoggedUser;
+
+                // Troca de usuário mantendo sessão operacional e caixa aberto
+                Services.SessionManager.StartSession(newUser);
+
+                // Atualiza status visual (rodapé)
+                try
+                {
+                    int cash = GetCurrentCashRegisterNumber();
+                    var tb = this.FindName("TxtOperatorStatus") as System.Windows.Controls.TextBlock;
+                    if (tb != null)
+                    {
+                        tb.Text = $"Operador: {newUser} | Caixa: {cash:00}";
+                    }
+                }
+                catch { }
+            }
+            else
+            {
+                // Cancelado: não altera nada
+                return;
+            }
+        }
+
+        private int GetCurrentCashRegisterNumber()
+        {
+            try
+            {
+                using var conn = new Microsoft.Data.Sqlite.SqliteConnection(PDV_MedusaX8.Services.DbHelper.GetConnectionString());
+                conn.Open();
+                return GetCurrentCashRegisterNumber(conn);
+            }
+            catch { }
+            return 1;
+        }
+
+        private int GetCurrentCashRegisterNumber(Microsoft.Data.Sqlite.SqliteConnection conn)
+        {
+            int cashNumber = 1;
+            try
+            {
+                using var cmdGet = conn.CreateCommand();
+                cmdGet.CommandText = "SELECT Value FROM Settings WHERE Key='CashRegisterNumber' LIMIT 1";
+                var v = cmdGet.ExecuteScalar();
+                if (v != null && v != DBNull.Value && int.TryParse(v.ToString(), out var n)) cashNumber = n;
+                if (cashNumber == 0)
+                {
+                    using var cmdSerie = conn.CreateCommand();
+                    cmdSerie.CommandText = "SELECT Serie FROM ConfiguracoesNFCe LIMIT 1";
+                    var sv = cmdSerie.ExecuteScalar();
+                    if (sv != null && sv != DBNull.Value && int.TryParse(sv.ToString(), out var s)) cashNumber = s;
+                }
+                if (cashNumber == 0) cashNumber = 1;
+            }
+            catch { }
+            return cashNumber;
+        }
+
+        private int GetOpenCashSessionId(Microsoft.Data.Sqlite.SqliteConnection conn)
+        {
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT Id FROM CashSessions WHERE ClosedAt IS NULL ORDER BY OpenedAt DESC LIMIT 1";
+                var v = cmd.ExecuteScalar();
+                if (v != null && v != DBNull.Value && int.TryParse(v.ToString(), out var id)) return id;
+            }
+            catch { }
+            return 0;
+        }
+
         public MainWindow()
         {
             InitializeComponent();
+            
+            // Verificar se há uma sessão válida
+            if (!SessionManager.IsLoggedIn || !SessionManager.IsSessionValid())
+            {
+                MessageBox.Show("Sessão expirada. Faça login novamente.", "Sessão Expirada", MessageBoxButton.OK, MessageBoxImage.Warning);
+                SessionManager.EndSession();
+                
+                // Abrir tela de login
+                LoginWindow loginWindow = new LoginWindow();
+                loginWindow.Show();
+                this.Close();
+                return;
+            }
+            
+            // Atualizar título da janela com usuário logado
+            this.Title = $"PDV MedusaX8 - Usuário: {SessionManager.CurrentUser}";
+            
             InitializeDatabase();
             LoadCartItems();
             LoadF9OptionFlag();
@@ -80,16 +186,65 @@ namespace PDV_MedusaX8
             // Inicializa o TEF
             InitializeTEF();
 
-            // Coloca o foco no campo de código ao carregar a janela e aplica bloqueio se exigir F2
-            this.Loaded += (sender, e) => {
-                if (_requireF2ToStartSale)
+            // Ajusta a visibilidade do atalho de Importar ERP conforme configuração
+            UpdateERPImportShortcutVisibility();
+
+            // Carrega logo personalizado se configurado
+            LoadCustomLogo();
+
+            // Exigir abertura de caixa ao iniciar o PDV
+            try
+            {
+                if (!HasActiveCashSession())
                 {
-                    _saleStarted = false;
-                    try { InputCodeField.IsEnabled = false; } catch { }
-                    MessageBox.Show("Pressione F2 para iniciar a venda.", "Iniciar venda", MessageBoxButton.OK, MessageBoxImage.Information);
+                    var ab = new AberturaCaixaWindow { Owner = this };
+                    var ok = ab.ShowDialog();
+                    if (ok != true)
+                    {
+                        MessageBox.Show("Abertura de caixa é obrigatória. O PDV será encerrado.", "Abertura obrigatória", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        this.Close();
+                        return;
+                    }
+                    // Após abertura, atualizar aviso de situação
+                    try { RefreshCashSessionStatus(); } catch { }
                 }
+            }
+            catch { /* ignore */ }
+            // Sincroniza UI inicial conforme exigência de F2, sem alerta modal
+            UpdateRequireF2UiState(showPrompt: false);
+
+            // Coloca o foco no campo de código ao carregar a janela, sem alertas automáticos
+            this.Loaded += (sender, e) => {
+                if (_requireF2ToStartSale) { _saleStarted = false; }
                 InputCodeField.Focus();
+                // Atualiza aviso de situação do caixa ao carregar a janela
+                try { RefreshCashSessionStatus(); } catch { }
             };
+        }
+
+        private void UpdateERPImportShortcutVisibility()
+        {
+            try
+            {
+                using var conn = new SqliteConnection(DbHelper.GetConnectionString());
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT Value FROM Settings WHERE Key=$k LIMIT 1;";
+                cmd.Parameters.AddWithValue("$k", "ImportERPOrdersEnabled");
+                var v = cmd.ExecuteScalar();
+                bool enabled = false;
+                if (v != null && v != DBNull.Value)
+                {
+                    var s = Convert.ToString(v);
+                    enabled = s == "1" || string.Equals(s, "true", StringComparison.OrdinalIgnoreCase);
+                }
+
+                try { if (BtnERPImportShortcut != null) BtnERPImportShortcut.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed; } catch { }
+            }
+            catch
+            {
+                try { if (BtnERPImportShortcut != null) BtnERPImportShortcut.Visibility = Visibility.Collapsed; } catch { }
+            }
         }
 
         public void SetConsumer(string? name, string? cpf, int? customerId)
@@ -99,9 +254,11 @@ namespace PDV_MedusaX8
             _consumerCustomerId = customerId;
             UpdateConsumerLabels();
             UpdateWindowCloseState();
+            // Atualiza estado visual (habilitado/desabilitado) dos atalhos conforme venda/carrinho
+            UpdateShortcutUiEnabledStates();
         }
 
-        // Apenas para NFC-e: inserção rápida não cria cliente
+        // Solicita seleção de consumidor (janela rápida) quando necessário
         public bool EnsureConsumerSelected()
         {
             if (HasConsumer) return true;
@@ -110,7 +267,7 @@ namespace PDV_MedusaX8
             var ok = qw.ShowDialog();
             if (ok == true)
             {
-                SetConsumer(qw.ResultName, qw.ResultCPF, null); // sem ID de cliente
+                SetConsumer(qw.ResultName, qw.ResultCPF, null);
                 return true;
             }
             return false;
@@ -122,7 +279,52 @@ namespace PDV_MedusaX8
             {
                 e.Cancel = true;
                 MessageBox.Show("Não é possível fechar enquanto há itens na venda.", "Fechamento bloqueado", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
+            // Perguntar fechamento do caixa ao encerrar a janela
+            try
+            {
+                if (HasActiveCashSession())
+                {
+                    var ask = MessageBox.Show("Deseja realizar o fechamento do caixa agora?", "Fechar Caixa", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (ask == MessageBoxResult.Yes)
+                    {
+                        string? supervisor = null;
+                        var askSup = MessageBox.Show("Deseja incluir um supervisor na validação?", "Supervisor", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                        if (askSup == MessageBoxResult.Yes)
+                        {
+                            var auth = new LoginWindow(authorizationMode: true) { Owner = this };
+                            var ok = auth.ShowDialog();
+                            if (ok == true && (string.Equals(auth.LoggedRole, "admin", StringComparison.OrdinalIgnoreCase) || string.Equals(auth.LoggedRole, "fiscal", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                supervisor = auth.LoggedUser;
+                            }
+                            else
+                            {
+                                MessageBox.Show("Acesso de supervisor negado ou cancelado.", "Supervisor", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            }
+                        }
+                        var fc = new FechamentoCaixaWindow();
+                        fc.Owner = this;
+                        fc.ClosedByUser = SessionManager.CurrentUser;
+                        fc.SupervisorUser = supervisor;
+                        fc.ShowDialog();
+                        // Atualiza aviso ao retornar do fechamento
+                        try { RefreshCashSessionStatus(); } catch { }
+                        // Se ainda houver sessão ativa, confirmar se deve continuar encerrando
+                        if (HasActiveCashSession())
+                        {
+                            var cont = MessageBox.Show("Fechamento não concluído. Deseja sair mesmo assim?", "Encerrar", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                            if (cont == MessageBoxResult.No)
+                            {
+                                e.Cancel = true;
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { /* ignore */ }
         }
 
         private void CloseWindow(object sender, RoutedEventArgs e)
@@ -132,6 +334,49 @@ namespace PDV_MedusaX8
                 MessageBox.Show("Não é possível fechar enquanto há itens na venda.", "Fechamento bloqueado", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+            // Perguntar fechamento do caixa ao clicar em X
+            try
+            {
+                if (HasActiveCashSession())
+                {
+                    var ask = MessageBox.Show("Deseja realizar o fechamento do caixa agora?", "Fechar Caixa", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (ask == MessageBoxResult.Yes)
+                    {
+                        string? supervisor = null;
+                        var askSup = MessageBox.Show("Deseja incluir um supervisor na validação?", "Supervisor", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                        if (askSup == MessageBoxResult.Yes)
+                        {
+                            var auth = new LoginWindow(authorizationMode: true) { Owner = this };
+                            var ok = auth.ShowDialog();
+                            if (ok == true && (string.Equals(auth.LoggedRole, "admin", StringComparison.OrdinalIgnoreCase) || string.Equals(auth.LoggedRole, "fiscal", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                supervisor = auth.LoggedUser;
+                            }
+                            else
+                            {
+                                MessageBox.Show("Acesso de supervisor negado ou cancelado.", "Supervisor", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            }
+                        }
+                        var fc = new FechamentoCaixaWindow();
+                        fc.Owner = this;
+                        fc.ClosedByUser = SessionManager.CurrentUser;
+                        fc.SupervisorUser = supervisor;
+                        fc.ShowDialog();
+                        // Atualiza aviso ao retornar do fechamento
+                        try { RefreshCashSessionStatus(); } catch { }
+                        // Se ainda houver sessão ativa, confirmar se deve continuar encerrando
+                        if (HasActiveCashSession())
+                        {
+                            var cont = MessageBox.Show("Fechamento não concluído. Deseja sair mesmo assim?", "Encerrar", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                            if (cont == MessageBoxResult.No)
+                            {
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { /* ignore */ }
             this.Close();
         }
 
@@ -176,6 +421,80 @@ namespace PDV_MedusaX8
             }
         }
 
+        private void MenuShortcut_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (sender is FrameworkElement fe)
+                {
+                    var mode = fe.Tag as string;
+                    if (string.IsNullOrWhiteSpace(mode))
+                    {
+                        return;
+                    }
+                    HandleShortcutMode(mode);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Falha ao executar atalho: {ex.Message}", "Atalhos", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void BtnSettingsHeader_Click(object sender, RoutedEventArgs e)
+        {
+            // Clique esquerdo: abre Configurações (F4)
+            try { HandleShortcutMode("F4"); } catch { }
+        }
+
+        private void BtnSettingsHeader_PreviewMouseRightButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            try
+            {
+                // Apenas abre o menu se estiver com CTRL pressionado
+                if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+                {
+                    if (sender is Button btn && btn.ContextMenu != null)
+                    {
+                        btn.ContextMenu.PlacementTarget = btn;
+                        btn.ContextMenu.IsOpen = true;
+                    }
+                }
+                // Bloqueia o comportamento padrão de abrir menu no clique direito
+                e.Handled = true;
+            }
+            catch { /* ignore */ }
+        }
+
+        private void MainGrid_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+        {
+            try
+            {
+                if (sender is Grid grid && grid.ContextMenu != null)
+                {
+                    // Restrição: venda ativa apenas quando F2 é exigido e já iniciada; ou há itens no carrinho
+                    bool restrict = (_requireF2ToStartSale && _saleStarted) || _cartItems.Count > 0;
+                    foreach (var obj in grid.ContextMenu.Items)
+                    {
+                        if (obj is MenuItem mi)
+                        {
+                            var tag = mi.Tag?.ToString();
+                            if (tag == "F4" || tag == "CTRL+L" || tag == "Ctrl+L" ||
+                                tag == "CTRL+S" || tag == "Ctrl+S" ||
+                                tag == "CTRL+F" || tag == "Ctrl+F" ||
+                                tag == "NFCe" || tag == "CTRL+R" || tag == "Ctrl+R" ||
+                                tag == "CTRL+O" || tag == "Ctrl+O")
+                            {
+                                mi.IsEnabled = !restrict;
+                                mi.ToolTip = restrict ? "Indisponível com venda aberta ou itens no carrinho" : null;
+                            }
+                        }
+                    }
+                }
+            }
+            catch { /* ignore */ }
+        }
+
         private void HandleShortcutMode(string mode)
         {
             App.Log($"Shortcut: {mode}");
@@ -191,7 +510,18 @@ namespace PDV_MedusaX8
                         _saleStarted = true;
                         try { InputCodeField.IsEnabled = true; } catch { }
                         InputCodeField.Focus();
+                        try { TxtStatusBar.Text = string.Empty; } catch { }
                         MessageBox.Show("Venda iniciada.", "Iniciar venda", MessageBoxButton.OK, MessageBoxImage.Information);
+                        // Atualiza visibilidade dos atalhos imediatamente ao iniciar a venda
+                        UpdateShortcutUiEnabledStates();
+                        // Ao iniciar a venda com F2, solicitar consumidor imediatamente se configurado e ainda não houver
+                        if (_promptConsumerOnFirstItem && !HasConsumer && !_consumerPromptedAlready)
+                        {
+                            EnsureConsumerSelected();
+                            _consumerPromptedAlready = true;
+                        }
+                        // Reflete nova condição na UI de atalhos
+                        UpdateShortcutUiEnabledStates();
                     }
                     else if (_requireF2ToStartSale)
                     {
@@ -226,9 +556,34 @@ namespace PDV_MedusaX8
                     }
                     break;
                 case "F4":
-                    var sw = new SettingsWindow();
-                    sw.Owner = this;
-                    sw.ShowDialog();
+                    // Bloquear Configurações quando houver venda aberta ou itens
+                    if ((_requireF2ToStartSale && _saleStarted) || _cartItems.Count > 0)
+                    {
+                        MessageBox.Show("Indisponível com venda aberta ou itens no carrinho.", "Configurações", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        break;
+                    }
+                    // Exigir autorização de administrador ou fiscal antes de abrir as Configurações
+                    var auth = new LoginWindow(authorizationMode: true) { Owner = this };
+                    var okAuth = auth.ShowDialog();
+                    if (okAuth == true &&
+                        (string.Equals(auth.LoggedRole, "admin", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(auth.LoggedRole, "fiscal", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var sw = new SettingsWindow();
+                        sw.Owner = this;
+                        sw.ShowDialog();
+                        // Após fechar Configurações, recarrega flags e sincroniza UI
+                        LoadRequireF2StartSaleFlag();
+                        LoadPromptConsumerFlag();
+                        LoadF9OptionFlag();
+                        LoadSupervisorSettings();
+                        UpdateERPImportShortcutVisibility();
+                        UpdateRequireF2UiState(showPrompt: true);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Acesso negado. Necessário usuário administrador ou fiscal.", "Autorização", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    }
                     break;
                 case "F5":
                     CancelSale();
@@ -298,6 +653,15 @@ namespace PDV_MedusaX8
                         SetConsumer(qw.ResultName, qw.ResultCPF, null);
                     }
                     break;
+                case "F12":
+                    var qwin = new ConsumidorQuickWindow();
+                    qwin.Owner = this;
+                    var qres = qwin.ShowDialog();
+                    if (qres == true)
+                    {
+                        SetConsumer(qwin.ResultName, qwin.ResultCPF, null);
+                    }
+                    break;
                 case "F8":
                     var data = _catalog.Select(kv => (Code: kv.Key, Description: kv.Value.Description, Price: kv.Value.UnitPrice)).ToList();
                     var pt = new ProdutosTesteWindow(data);
@@ -310,33 +674,58 @@ namespace PDV_MedusaX8
                     break;
                 case "CTRL+L":
                 case "Ctrl+L":
+                    if ((_requireF2ToStartSale && _saleStarted) || _cartItems.Count > 0)
+                    {
+                        MessageBox.Show("Indisponível com venda aberta ou itens no carrinho.", "Sangria", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        break;
+                    }
                     var dlg = new SangriaWindow();
                     dlg.Owner = this;
                     dlg.ShowDialog();
                     break;
                 case "CTRL+S":
                 case "Ctrl+S":
+                    if ((_requireF2ToStartSale && _saleStarted) || _cartItems.Count > 0)
+                    {
+                        MessageBox.Show("Indisponível com venda aberta ou itens no carrinho.", "Suprimento", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        break;
+                    }
                     var sup = new SuprimentoWindow();
                     sup.Owner = this;
                     sup.ShowDialog();
                     break;
                 case "CTRL+R":
                 case "Ctrl+R":
+                    if ((_requireF2ToStartSale && _saleStarted) || _cartItems.Count > 0)
+                    {
+                        MessageBox.Show("Indisponível com venda aberta ou itens no carrinho.", "Pagamento de Contas", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        break;
+                    }
                     var rw = new RecebimentoWindow();
                     rw.Owner = this;
                     rw.ShowDialog();
                     break;
-                case "CTRL+A":
-                case "Ctrl+A":
-                    var ab = new AberturaCaixaWindow();
-                    ab.Owner = this;
-                    ab.ShowDialog();
+                case "CTRL+O":
+                case "Ctrl+O":
+                    if ((_requireF2ToStartSale && _saleStarted) || _cartItems.Count > 0)
+                    {
+                        MessageBox.Show("Indisponível com venda aberta ou itens no carrinho.", "Trocar Operador", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        break;
+                    }
+                    TrySwitchOperator();
                     break;
                 case "CTRL+F":
                 case "Ctrl+F":
+                    if ((_requireF2ToStartSale && _saleStarted) || _cartItems.Count > 0)
+                    {
+                        MessageBox.Show("Indisponível com venda aberta ou itens no carrinho.", "Fechamento de Caixa", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        break;
+                    }
                     var fc = new FechamentoCaixaWindow();
                     fc.Owner = this;
                     fc.ShowDialog();
+                    // Atualiza aviso ao retornar do fechamento
+                    try { RefreshCashSessionStatus(); } catch { }
                     break;
                 case "alterar_preco":
                     _modoAlteracaoPrecoF9 = true;
@@ -368,6 +757,11 @@ namespace PDV_MedusaX8
                     OpenItemDiscountWindow();
                     break;
                 case "NFCe":
+                    if ((_requireF2ToStartSale && _saleStarted) || _cartItems.Count > 0)
+                    {
+                        MessageBox.Show("Indisponível com venda aberta ou itens no carrinho.", "Consulta NFC-e", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        break;
+                    }
                     var nfceWin = new NFCeMonitorWindow();
                     nfceWin.Owner = this;
                     nfceWin.ShowDialog();
@@ -477,6 +871,140 @@ namespace PDV_MedusaX8
             try { LblFinalTotal.Text = $"R$ {currentSaleTotal:N2}"; } catch { }
             try { DgvProdutos.Items.Refresh(); } catch { }
             UpdateWindowCloseState();
+            UpdateShortcutUiEnabledStates();
+        }
+
+        // Atualiza habilitação dos botões/atalhos visuais conforme estado atual
+        private void UpdateShortcutUiEnabledStates()
+        {
+            bool restrict = (_requireF2ToStartSale && _saleStarted) || _cartItems.Count > 0;
+
+            // Topo: Configurações e Logout devem ficar invisíveis durante restrição
+            try { BtnSettingsHeader.Visibility = restrict ? Visibility.Collapsed : Visibility.Visible; BtnSettingsHeader.IsEnabled = !restrict; } catch { }
+            try { BtnLogout.Visibility = restrict ? Visibility.Collapsed : Visibility.Visible; BtnLogout.IsEnabled = !restrict; } catch { }
+
+            // Rodapé: manter visíveis, apenas desabilitar quando em restrição
+            try { BtnSangria.IsEnabled = !restrict; BtnSangria.Visibility = Visibility.Visible; } catch { }
+            try { BtnSuprimento.IsEnabled = !restrict; BtnSuprimento.Visibility = Visibility.Visible; } catch { }
+            try { BtnReceberTitulo.IsEnabled = !restrict; BtnReceberTitulo.Visibility = Visibility.Visible; } catch { }
+            try { BtnFecharCaixa.IsEnabled = !restrict; BtnFecharCaixa.Visibility = Visibility.Visible; } catch { }
+            try { BtnNFCe.IsEnabled = !restrict; BtnNFCe.Visibility = Visibility.Visible; } catch { }
+            try { BtnOperador.IsEnabled = !restrict; } catch { }
+        }
+
+        private bool HasActiveCashSession()
+        {
+            try
+            {
+                using var conn = new SqliteConnection(DbHelper.GetConnectionString());
+                conn.Open();
+                // Garantir schema mínimo para consulta
+                using (var cmdInit = conn.CreateCommand())
+                {
+                    cmdInit.CommandText = @"
+                        CREATE TABLE IF NOT EXISTS CashSessions (
+                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            CashRegisterNumber INTEGER,
+                            OpenedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            OpeningAmount REAL NOT NULL DEFAULT 0,
+                            ClosedAt TEXT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_CashSessions_ClosedAt ON CashSessions(ClosedAt);
+                        CREATE INDEX IF NOT EXISTS idx_CashSessions_Open ON CashSessions(CashRegisterNumber, OpenedAt);
+                    ";
+                    cmdInit.ExecuteNonQuery();
+                }
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"SELECT COUNT(1) FROM CashSessions WHERE ClosedAt IS NULL";
+                    var obj = cmd.ExecuteScalar();
+                    int count = Convert.ToInt32(obj ?? 0);
+                    return count > 0;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void RefreshCashSessionStatus()
+        {
+            try
+            {
+                using var conn = new SqliteConnection(DbHelper.GetConnectionString());
+                conn.Open();
+                // Garantir schema
+                using (var cmdInit = conn.CreateCommand())
+                {
+                    cmdInit.CommandText = @"
+                        CREATE TABLE IF NOT EXISTS CashSessions (
+                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            CashRegisterNumber INTEGER,
+                            OpenedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            OpeningAmount REAL NOT NULL DEFAULT 0,
+                            ClosedAt TEXT NULL
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_CashSessions_ClosedAt ON CashSessions(ClosedAt);
+                        CREATE INDEX IF NOT EXISTS idx_CashSessions_Open ON CashSessions(CashRegisterNumber, OpenedAt);
+                    ";
+                    cmdInit.ExecuteNonQuery();
+                }
+                int cashNumber = 0;
+                bool isOpen = false;
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"SELECT CashRegisterNumber FROM CashSessions WHERE ClosedAt IS NULL ORDER BY OpenedAt DESC LIMIT 1";
+                    var v = cmd.ExecuteScalar();
+                    if (v != null && v != DBNull.Value)
+                    {
+                        isOpen = true;
+                        int.TryParse(v.ToString(), out cashNumber);
+                    }
+                }
+                // Atualiza badge visual e barra de status
+                try
+                {
+                    if (isOpen)
+                    {
+                        if (LblCaixaStatus != null) LblCaixaStatus.Text = "Caixa Aberto";
+                        if (BadgeCaixaStatus != null)
+                        {
+                            BadgeCaixaStatus.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x28, 0xA7, 0x45));
+                            BadgeCaixaStatus.BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x1E, 0x7E, 0x34));
+                            BadgeCaixaStatus.Visibility = Visibility.Visible;
+                        }
+                        if (TxtStatusBar != null) TxtStatusBar.Text = "Caixa Aberto";
+                    }
+                    else
+                    {
+                        if (LblCaixaStatus != null) LblCaixaStatus.Text = "Caixa Fechado";
+                        if (BadgeCaixaStatus != null)
+                        {
+                            BadgeCaixaStatus.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x6C, 0x75, 0x7D));
+                            BadgeCaixaStatus.BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x54, 0x5B, 0x62));
+                            BadgeCaixaStatus.Visibility = Visibility.Visible;
+                        }
+                        if (TxtStatusBar != null) TxtStatusBar.Text = "";
+                    }
+                }
+                catch { /* ignore UI errors */ }
+            }
+            catch { /* ignore db errors */ }
+        }
+
+        private void InputCodeField_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                if (_requireF2ToStartSale && !_saleStarted && !_modoAlteracaoPrecoF9)
+                {
+                    MessageBox.Show("Pressione F2 para iniciar a venda.", "Iniciar venda", MessageBoxButton.OK, MessageBoxImage.Information);
+                    e.Handled = true; // evita focar o campo via clique
+                }
+                // Quando F2 está desativado, não perguntar consumidor no clique; apenas no Enter
+            }
+            catch { }
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -525,6 +1053,11 @@ namespace PDV_MedusaX8
                 HandleShortcutMode("F9");
                 e.Handled = true;
             }
+            else if (e.Key == Key.F12)
+            {
+                HandleShortcutMode("F12");
+                e.Handled = true;
+            }
             else if (e.Key == Key.D && Keyboard.Modifiers == ModifierKeys.Shift)
             {
                 HandleShortcutMode("SHIFT+D");
@@ -554,10 +1087,29 @@ namespace PDV_MedusaX8
 
         private void InputCodeField_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if (e.Key == Key.Enter || e.Key == Key.Return)
             {
                 e.Handled = true;
+                // Ao confirmar código com Enter, solicitar consumidor uma única vez por venda (facultativo)
+                // Somente quando F2 está desativado
+                if (!_requireF2ToStartSale && _promptConsumerOnFirstItem && !HasConsumer && !_consumerPromptedAlready)
+                {
+                    EnsureConsumerSelected();
+                    _consumerPromptedAlready = true;
+                }
                 HandleCodeInput();
+            }
+            else if (e.Key == Key.Tab)
+            {
+                // Tratar TAB como confirmação do código para leitores que não enviam Enter/Return
+                e.Handled = true; // evita mudança de foco padrão do Tab
+                if (!_requireF2ToStartSale && _promptConsumerOnFirstItem && !HasConsumer && !_consumerPromptedAlready)
+                {
+                    EnsureConsumerSelected();
+                    _consumerPromptedAlready = true;
+                }
+                HandleCodeInput();
+                try { InputCodeField.Focus(); } catch { }
             }
             else if (e.Key == Key.Multiply)
             {
@@ -600,6 +1152,13 @@ namespace PDV_MedusaX8
         private void InputCodeField_TextChanged(object sender, TextChangedEventArgs e)
         {
             if (_isParsingCodeInput) return;
+            
+            // Bloquear processamento se F2 for obrigatório e a venda não foi iniciada
+            if (_requireF2ToStartSale && !_saleStarted && !_modoAlteracaoPrecoF9)
+            {
+                return;
+            }
+            
             var text = InputCodeField.Text?.Trim() ?? string.Empty;
             if (string.IsNullOrEmpty(text))
             {
@@ -650,7 +1209,11 @@ namespace PDV_MedusaX8
         {
             try
             {
-                InputCodeField.Focus();
+                // Não focar no campo se F2 for obrigatório e a venda não foi iniciada
+                if (!(_requireF2ToStartSale && !_saleStarted && !_modoAlteracaoPrecoF9))
+                {
+                    InputCodeField.Focus();
+                }
                 e.Handled = true;
             }
             catch { }
@@ -660,7 +1223,7 @@ namespace PDV_MedusaX8
         {
             if (_requireF2ToStartSale && !_saleStarted && !_modoAlteracaoPrecoF9)
             {
-                MessageBox.Show("Pressione F2 para iniciar a venda.", "Iniciar venda", MessageBoxButton.OK, MessageBoxImage.Information);
+                // Bloqueia processamento sem exibir alerta automático; alerta só no clique do input
                 return;
             }
 
@@ -761,6 +1324,11 @@ namespace PDV_MedusaX8
         {
             if (qty <= 0) qty = 1;
 
+            // Detecta se já havia algum item de venda (não cancelamento) antes desta inclusão
+            bool hadSaleItemBefore = _cartItems.Any(i => !i.IsCancellation);
+
+            // Não perguntar consumidor aqui quando F2 está desativado; fluxo ficou exclusivo no Enter
+
             var existing = _cartItems.FirstOrDefault(i => string.Equals(i.Codigo, code, StringComparison.OrdinalIgnoreCase) && !i.IsCancellation);
             if (existing != null)
             {
@@ -780,11 +1348,7 @@ namespace PDV_MedusaX8
                     IsCancellation = false
                 };
                 _cartItems.Add(item);
-
-                if (_promptConsumerOnFirstItem && !HasConsumer && _cartItems.Count == 1)
-                {
-                    EnsureConsumerSelected();
-                }
+                try { App.Log($"Item incluído code={code} firstSaleBefore={(hadSaleItemBefore ? 1 : 0)} promptFlag={( _promptConsumerOnFirstItem ? 1 : 0)} requireF2={( _requireF2ToStartSale ? 1 : 0)} hasConsumer={(HasConsumer ? 1 : 0)}"); } catch { }
             }
 
             UpdateTotalsAndRefresh();
@@ -805,6 +1369,7 @@ namespace PDV_MedusaX8
             _consumerName = null;
             _consumerCPF = null;
             _consumerCustomerId = null;
+            _consumerPromptedAlready = false;
             UpdateWindowCloseState();
 
             if (_requireF2ToStartSale)
@@ -812,6 +1377,7 @@ namespace PDV_MedusaX8
                 _saleStarted = false;
                 try { InputCodeField.IsEnabled = false; } catch { }
             }
+            UpdateShortcutUiEnabledStates();
         }
 
         private void CancelSale()
@@ -830,6 +1396,8 @@ namespace PDV_MedusaX8
                     _saleStarted = false;
                     try { InputCodeField.IsEnabled = false; } catch { }
                 }
+                _consumerPromptedAlready = false;
+                UpdateShortcutUiEnabledStates();
             }
         }
 
@@ -877,6 +1445,16 @@ namespace PDV_MedusaX8
                     CREATE TABLE IF NOT EXISTS Settings (
                         Key TEXT PRIMARY KEY,
                         Value TEXT
+                    );
+                    CREATE TABLE IF NOT EXISTS Users (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Username TEXT NOT NULL UNIQUE,
+                        PasswordHash TEXT NOT NULL,
+                        Role TEXT NOT NULL,
+                        Active INTEGER NOT NULL DEFAULT 1,
+                        ExternalId TEXT NULL,
+                        CreatedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        UpdatedAt TEXT NULL
                     );
                     CREATE TABLE IF NOT EXISTS Products (
                         Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1305,6 +1883,54 @@ namespace PDV_MedusaX8
                     ";
                     cmdARIdx.ExecuteNonQuery();
                 }
+
+                // Empresa e Contador
+                using (var cmdEmp = conn.CreateCommand())
+                {
+                    cmdEmp.CommandText = @"
+                        CREATE TABLE IF NOT EXISTS Empresa (
+                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            RazaoSocial TEXT,
+                            NomeFantasia TEXT,
+                            CNPJ TEXT,
+                            IE TEXT,
+                            IM TEXT,
+                            RegimeTributario TEXT,
+                            CNAE TEXT,
+                            Email TEXT,
+                            Telefone TEXT,
+                            Website TEXT,
+                            CEP TEXT,
+                            Logradouro TEXT,
+                            Numero TEXT,
+                            Complemento TEXT,
+                            Bairro TEXT,
+                            MunicipioCodigo TEXT,
+                            MunicipioNome TEXT,
+                            UF TEXT
+                        );
+
+                        CREATE TABLE IF NOT EXISTS Contador (
+                            Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            Nome TEXT,
+                            CRC TEXT,
+                            CNPJ TEXT,
+                            CPF TEXT,
+                            Email TEXT,
+                            Telefone TEXT,
+                            Celular TEXT,
+                            CEP TEXT,
+                            Logradouro TEXT,
+                            Numero TEXT,
+                            Complemento TEXT,
+                            Bairro TEXT,
+                            MunicipioCodigo TEXT,
+                            MunicipioNome TEXT,
+                            UF TEXT
+                        );
+                    ";
+                    cmdEmp.ExecuteNonQuery();
+                }
             }
             catch (Exception ex)
             {
@@ -1334,9 +1960,18 @@ namespace PDV_MedusaX8
                 using var conn = new SqliteConnection(GetConnectionString());
                 conn.Open();
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT Value FROM Settings WHERE Key = 'PromptConsumerOnFirstItem'";
-                var val = cmd.ExecuteScalar() as string;
-                _promptConsumerOnFirstItem = string.Equals(val, "1", StringComparison.OrdinalIgnoreCase);
+                cmd.CommandText = "SELECT Value FROM Settings WHERE Key = 'PromptConsumerOnFirstItem' LIMIT 1";
+                var obj = cmd.ExecuteScalar();
+                var s = (obj == null || obj == DBNull.Value) ? null : Convert.ToString(obj);
+                // Default: verdadeiro quando chave ausente/nula (alinha com SettingsWindow)
+                if (string.IsNullOrWhiteSpace(s))
+                {
+                    _promptConsumerOnFirstItem = true;
+                }
+                else
+                {
+                    _promptConsumerOnFirstItem = (s == "1" || string.Equals(s, "true", StringComparison.OrdinalIgnoreCase));
+                }
             }
             catch { _promptConsumerOnFirstItem = true; }
         }
@@ -1348,7 +1983,7 @@ namespace PDV_MedusaX8
                 using var conn = new SqliteConnection(GetConnectionString());
                 conn.Open();
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = "SELECT Key, Value FROM Settings WHERE Key IN ('RequireSupervisorForSangria','SupervisorCode','SupervisorPassword','SupervisorName')";
+                cmd.CommandText = "SELECT Key, Value FROM Settings WHERE Key IN ('RequireSupervisorForSangria','RequireSupervisorForOpeningCash','RequireSupervisorForClosingCash','SupervisorCode','SupervisorPassword','SupervisorName')";
                 using var reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
@@ -1358,6 +1993,12 @@ namespace PDV_MedusaX8
                     {
                         case "RequireSupervisorForSangria":
                             _requireSupervisorForSangria = string.Equals(val, "1", StringComparison.OrdinalIgnoreCase);
+                            break;
+                        case "RequireSupervisorForOpeningCash":
+                            _requireSupervisorForOpeningCash = string.Equals(val, "1", StringComparison.OrdinalIgnoreCase);
+                            break;
+                        case "RequireSupervisorForClosingCash":
+                            _requireSupervisorForClosingCash = string.Equals(val, "1", StringComparison.OrdinalIgnoreCase);
                             break;
                         case "SupervisorCode":
                             _supervisorCode = val;
@@ -1382,11 +2023,45 @@ namespace PDV_MedusaX8
                 conn.Open();
                 using var cmd = conn.CreateCommand();
                 cmd.CommandText = "SELECT Value FROM Settings WHERE Key = 'RequireF2ToStartSale'";
-                var val = cmd.ExecuteScalar() as string;
-                _requireF2ToStartSale = string.Equals(val, "1", StringComparison.OrdinalIgnoreCase);
-                _saleStarted = !_requireF2ToStartSale; // inicia habilitado se não exigir F2
+                var obj = cmd.ExecuteScalar();
+                string? val = (obj == null || obj == DBNull.Value) ? null : Convert.ToString(obj);
+                _requireF2ToStartSale = !string.IsNullOrWhiteSpace(val) &&
+                    (string.Equals(val, "1", StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(val, "true", StringComparison.OrdinalIgnoreCase));
             }
-            catch { _requireF2ToStartSale = false; _saleStarted = true; }
+            catch { _requireF2ToStartSale = false; }
+        }
+
+        private void UpdateRequireF2UiState(bool showPrompt = false)
+        {
+            try
+            {
+                if (_requireF2ToStartSale)
+                {
+                    if (_cartItems.Count == 0)
+                    {
+                        _saleStarted = false;
+                        try { InputCodeField.IsEnabled = false; } catch { }
+                        // Exibir dica fixa na barra de status quando F2 é exigido e não há itens
+                        try { TxtStatusBar.Text = "PARA INICIAR VENDA TECLE F2"; } catch { }
+                    }
+                    else
+                    {
+                        _saleStarted = true;
+                        try { InputCodeField.IsEnabled = true; } catch { }
+                        try { TxtStatusBar.Text = string.Empty; } catch { }
+                    }
+                }
+                else
+                {
+                    _saleStarted = true;
+                    try { InputCodeField.IsEnabled = true; } catch { }
+                    try { TxtStatusBar.Text = string.Empty; } catch { }
+                }
+                // Garante que aparência dos atalhos acompanhe o estado (_saleStarted/itens)
+                UpdateShortcutUiEnabledStates();
+            }
+            catch { /* ignore */ }
         }
 
         private void InitializeTEF()
@@ -1602,7 +2277,7 @@ namespace PDV_MedusaX8
 
                 if (!enabled)
                 {
-                    MessageBox.Show("Habilite 'Importar pedido de venda do ERP' nas Configurações (aba Geral).", "Importação ERP", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("Habilite 'Importar pedido de venda do ERP' nas Configurações (aba Opções).", "Importação ERP", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
@@ -1614,6 +2289,130 @@ namespace PDV_MedusaX8
             {
                 MessageBox.Show($"Erro ao abrir importação ERP: {ex.Message}", "Importação ERP", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void BtnLogout_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Confirmar logout
+                var result = MessageBox.Show("Deseja realmente fazer logout do sistema?", 
+                                           "Confirmar Logout", 
+                                           MessageBoxButton.YesNo, 
+                                           MessageBoxImage.Question);
+                
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Perguntar fechamento do caixa antes do logout
+                    try
+                    {
+                        if (HasActiveCashSession())
+                        {
+                            var ask = MessageBox.Show("Deseja realizar o fechamento do caixa agora?", "Fechar Caixa", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                            if (ask == MessageBoxResult.Yes)
+                            {
+                                string? supervisor = null;
+                                var askSup = MessageBox.Show("Deseja incluir um supervisor na validação?", "Supervisor", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                                if (askSup == MessageBoxResult.Yes)
+                                {
+                                    var auth = new LoginWindow(authorizationMode: true) { Owner = this };
+                                    var ok = auth.ShowDialog();
+                                    if (ok == true && (string.Equals(auth.LoggedRole, "admin", StringComparison.OrdinalIgnoreCase) || string.Equals(auth.LoggedRole, "fiscal", StringComparison.OrdinalIgnoreCase)))
+                                    {
+                                        supervisor = auth.LoggedUser;
+                                    }
+                                    else
+                                    {
+                                        MessageBox.Show("Acesso de supervisor negado ou cancelado.", "Supervisor", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                    }
+                                }
+                                var fc = new FechamentoCaixaWindow();
+                                fc.Owner = this;
+                                fc.ClosedByUser = SessionManager.CurrentUser;
+                                fc.SupervisorUser = supervisor;
+                                fc.ShowDialog();
+                                // Atualiza aviso ao retornar do fechamento
+                                try { RefreshCashSessionStatus(); } catch { }
+                            }
+                        }
+                    }
+                    catch { /* ignore */ }
+                    // Encerrar sessão
+                    SessionManager.EndSession();
+                    
+                    // Fechar janela atual
+                    this.Close();
+                    
+                    // Abrir janela de login
+                    var loginWindow = new LoginWindow();
+                    loginWindow.Show();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erro ao fazer logout: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void LoadCustomLogo()
+        {
+            try
+            {
+                using var conn = new SqliteConnection(DbHelper.GetConnectionString());
+                conn.Open();
+                
+                // Verificar se deve exibir o logo
+                using var cmdShow = conn.CreateCommand();
+                cmdShow.CommandText = "SELECT Value FROM Settings WHERE Key = 'ShowLogo' LIMIT 1;";
+                var showLogoValue = cmdShow.ExecuteScalar();
+                bool showLogo = showLogoValue != null && (showLogoValue.ToString() == "1" || showLogoValue.ToString().ToLower() == "true");
+                
+                if (!showLogo)
+                {
+                    CustomLogoImage.Visibility = Visibility.Collapsed;
+                    ExampleLogoPlaceholder.Visibility = Visibility.Collapsed;
+                    ProductImageDisplay.Visibility = Visibility.Visible;
+                    return;
+                }
+                
+                // Obter caminho da imagem
+                using var cmdPath = conn.CreateCommand();
+                cmdPath.CommandText = "SELECT Value FROM Settings WHERE Key = 'LogoImagePath' LIMIT 1;";
+                var logoPath = cmdPath.ExecuteScalar()?.ToString();
+                
+                if (string.IsNullOrWhiteSpace(logoPath) || !File.Exists(logoPath))
+                {
+                    CustomLogoImage.Visibility = Visibility.Collapsed;
+                    ProductImageDisplay.Visibility = Visibility.Collapsed;
+                    ExampleLogoPlaceholder.Visibility = Visibility.Visible;
+                    return;
+                }
+                
+                // Carregar e exibir a imagem
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.UriSource = new Uri(logoPath, UriKind.Absolute);
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                
+                CustomLogoImage.Source = bitmap;
+                CustomLogoImage.Visibility = Visibility.Visible;
+                ExampleLogoPlaceholder.Visibility = Visibility.Collapsed;
+                ProductImageDisplay.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                // Em caso de erro, ocultar o logo personalizado
+                CustomLogoImage.Visibility = Visibility.Collapsed;
+                ExampleLogoPlaceholder.Visibility = Visibility.Collapsed;
+                ProductImageDisplay.Visibility = Visibility.Visible;
+                System.Diagnostics.Debug.WriteLine($"Erro ao carregar logo personalizado: {ex.Message}");
+            }
+        }
+
+        public void RefreshCustomLogo()
+        {
+            LoadCustomLogo();
         }
 }
 }

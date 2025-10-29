@@ -6,6 +6,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <Grid Grid.Row="0" Margin="0,0,0,8">
@@ -26,9 +27,22 @@
             <TextBox x:Name="TxtMotivo" Grid.Row="1" Grid.Column="0" Margin="0,24,12,8" HorizontalAlignment="Stretch"/>
         </Grid>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Salvar" Width="100" Margin="0,0,8,0" Click="BtnSalvar_Click"/>
-            <Button Content="Cancelar" Width="100" Click="BtnCancelar_Click"/>
+        <!-- Painel de autorização do supervisor (exibido quando obrigatório) -->
+        <StackPanel x:Name="SupervisorPanel" Grid.Row="1" Visibility="Collapsed" Margin="0,0,0,8">
+            <TextBlock Text="Autorização do Supervisor" FontWeight="Bold"/>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                <TextBlock Text="Código:" Width="100"/>
+                <TextBox x:Name="TxtSupervisorCode" Width="160"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                <TextBlock Text="Senha:" Width="100"/>
+                <PasswordBox x:Name="TxtSupervisorPassword" Width="160"/>
+            </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Salvar" Width="100" Margin="0,0,8,0" Click="BtnSalvar_Click" Padding="8,0,8,0"/>
+            <Button Content="Cancelar" Width="100" Click="BtnCancelar_Click" Padding="8,0,8,0"/>
         </StackPanel>
     </Grid>
 </Window>

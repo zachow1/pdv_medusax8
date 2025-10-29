@@ -266,6 +266,8 @@ namespace PDV_MedusaX8
                     }
                 }
 
+                try { AutoSyncManager.Instance.TriggerCustomersSync(); } catch { }
+
                 MessageBox.Show("Cliente salvo com sucesso.", "Cliente", MessageBoxButton.OK, MessageBoxImage.Information);
                 this.DialogResult = true;
                 this.Close();

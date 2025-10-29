@@ -233,17 +233,18 @@ namespace PDV_MedusaX8
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.Transaction = tx;
-                    cmd.CommandText = @"INSERT INTO CashMovements (Type, Amount, Reason, Operator, CreatedAt, PaymentMethodCode, CounterpartyName, CounterpartyDoc, ReferenceType, ReferenceId, DocumentNumber, Notes)
-                                        VALUES ('RECEBIMENTO', $amount, $reason, $op, CURRENT_TIMESTAMP, $pm, $name, $doc, 'RECEIVABLE', $refId, $docnum, $notes);";
+                    cmd.CommandText = @"INSERT INTO CashMovements (Type, Amount, Reason, Operator, CreatedAt, PaymentMethodCode, CounterpartyName, CounterpartyDoc, ReferenceType, ReferenceId, DocumentNumber, Notes, CashRegisterNumber)
+                                        VALUES ('RECEBIMENTO', $amount, $reason, $op, CURRENT_TIMESTAMP, $pm, $name, $doc, 'RECEIVABLE', $refId, $docnum, $notes, $cashreg);";
                     cmd.Parameters.AddWithValue("$amount", amount);
                     cmd.Parameters.AddWithValue("$reason", string.Equals(sel.Type, "CARNE", StringComparison.OrdinalIgnoreCase) ? $"Recebimento Carnê {sel.DocumentNumber}" : $"Recebimento Boleto {sel.DocumentNumber}");
-                    cmd.Parameters.AddWithValue("$op", (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("$op", PDV_MedusaX8.Services.SessionManager.CurrentUser ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("$pm", pm.Code);
                     cmd.Parameters.AddWithValue("$name", string.IsNullOrWhiteSpace(name) ? (object)DBNull.Value : name);
                     cmd.Parameters.AddWithValue("$doc", string.IsNullOrWhiteSpace(doc) ? (object)DBNull.Value : doc);
                     cmd.Parameters.AddWithValue("$refId", sel.Id);
                     cmd.Parameters.AddWithValue("$docnum", string.IsNullOrWhiteSpace(sel.DocumentNumber) ? (object)DBNull.Value : sel.DocumentNumber);
                     cmd.Parameters.AddWithValue("$notes", string.IsNullOrWhiteSpace(notes) ? (object)DBNull.Value : notes);
+                    cmd.Parameters.AddWithValue("$cashreg", GetCashRegisterNumber(conn));
                     cmd.ExecuteNonQuery();
                 }
                 using (var cmdId = conn.CreateCommand())
@@ -263,7 +264,7 @@ namespace PDV_MedusaX8
                     cmd.Parameters.AddWithValue("$iid", installmentId.HasValue ? (object)installmentId.Value : DBNull.Value);
                     cmd.Parameters.AddWithValue("$amount", amount);
                     cmd.Parameters.AddWithValue("$pm", pm.Code);
-                    cmd.Parameters.AddWithValue("$op", (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("$op", PDV_MedusaX8.Services.SessionManager.CurrentUser ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("$name", string.IsNullOrWhiteSpace(name) ? (object)DBNull.Value : name);
                     cmd.Parameters.AddWithValue("$doc", string.IsNullOrWhiteSpace(doc) ? (object)DBNull.Value : doc);
                     cmd.Parameters.AddWithValue("$cash", cashId);
@@ -299,6 +300,7 @@ namespace PDV_MedusaX8
                 }
 
                 tx.Commit();
+                try { AutoSyncManager.Instance.TriggerFinancialSync(); } catch { }
                 MessageBox.Show("Recebimento registrado com sucesso.", "Recebimento", MessageBoxButton.OK, MessageBoxImage.Information);
                 this.DialogResult = true;
                 this.Close();
@@ -307,6 +309,28 @@ namespace PDV_MedusaX8
             {
                 MessageBox.Show($"Falha ao registrar recebimento: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private static int GetCashRegisterNumber(SqliteConnection conn)
+        {
+            int cashNumber = 1;
+            try
+            {
+                using var cmdGet = conn.CreateCommand();
+                cmdGet.CommandText = "SELECT Value FROM Settings WHERE Key='CashRegisterNumber' LIMIT 1";
+                var v = cmdGet.ExecuteScalar();
+                if (v != null && v != DBNull.Value && int.TryParse(v.ToString(), out var n)) cashNumber = n;
+                if (cashNumber == 0)
+                {
+                    using var cmdSerie = conn.CreateCommand();
+                    cmdSerie.CommandText = "SELECT Serie FROM ConfiguracoesNFCe LIMIT 1";
+                    var sv = cmdSerie.ExecuteScalar();
+                    if (sv != null && sv != DBNull.Value && int.TryParse(sv.ToString(), out var s)) cashNumber = s;
+                }
+                if (cashNumber == 0) cashNumber = 1;
+            }
+            catch { }
+            return cashNumber;
         }
 
         private void BtnCancelar_Click(object sender, RoutedEventArgs e)

@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Windows;
+using Microsoft.Data.Sqlite;
+using PDV_MedusaX8.Services;
 
 namespace PDV_MedusaX8
 {
@@ -21,17 +24,47 @@ namespace PDV_MedusaX8
         public ProdutosTesteWindow(IEnumerable<(string Code, string Description, decimal Price)> catalog)
         {
             InitializeComponent();
-            var list = new List<CatalogEntry>();
-            foreach (var c in catalog)
+            var configured = GetConfiguredCodes();
+            var filtered = catalog
+                .Where(c => configured.Contains(c.Code))
+                .Select(c => new CatalogEntry { Code = c.Code, Description = c.Description, Price = c.Price })
+                .ToList();
+
+            ItemsProdutos.ItemsSource = filtered;
+
+            if (filtered.Count == 0 && configured.Count == 0)
             {
-                list.Add(new CatalogEntry { Code = c.Code, Description = c.Description, Price = c.Price });
+                // Sem produtos vinculados ainda
+                // Mantemos a tela vazia para o usuário saber que precisa configurar
+                // em Configurações > Produto Fácil.
             }
-            LstProdutos.ItemsSource = list;
         }
 
-        private void BtnAdicionar_Click(object sender, RoutedEventArgs e)
+        private HashSet<string> GetConfiguredCodes()
         {
-            if (LstProdutos.SelectedItem is CatalogEntry entry)
+            try
+            {
+                using var conn = new SqliteConnection(DbHelper.GetConnectionString());
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT Value FROM Settings WHERE Key='ProdutoFacilCodes' LIMIT 1;";
+                var obj = cmd.ExecuteScalar();
+                var raw = (obj == null || obj == DBNull.Value) ? string.Empty : Convert.ToString(obj) ?? string.Empty;
+                return raw
+                    .Split(new[] { ',', ';', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
+        }
+
+        private void ProdutoTile_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && fe.DataContext is CatalogEntry entry)
             {
                 SelectedEntry = entry;
                 if (!decimal.TryParse(TxtQtd.Text.Replace('.', ','), NumberStyles.Number, CultureInfo.GetCultureInfo("pt-BR"), out var qty) || qty <= 0)
@@ -42,10 +75,6 @@ namespace PDV_MedusaX8
                 SelectedQty = qty;
                 DialogResult = true;
                 Close();
-            }
-            else
-            {
-                MessageBox.Show("Selecione um produto.", "Validação", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Data.Sqlite;
 using PDV_MedusaX8.Services;
@@ -15,7 +16,8 @@ namespace PDV_MedusaX8
         public ERPImportWindow()
         {
             InitializeComponent();
-            this.Loaded += (_, __) => TxtCliente.Focus();
+            this.Loaded += (_, __) => TxtCustomerName.Focus();
+            UpdateSyncStatus("Pronto para importação");
         }
 
         private string GetConnectionString() => DbHelper.GetConnectionString();
@@ -36,33 +38,47 @@ namespace PDV_MedusaX8
             cmd.ExecuteNonQuery();
         }
 
-        private void BtnImportar_Click(object sender, RoutedEventArgs e)
+        private void UpdateSyncStatus(string status)
         {
-            var nome = TxtCliente.Text?.Trim() ?? string.Empty;
-            var numero = TxtNumeroPedido.Text?.Trim() ?? string.Empty;
-            var valorRaw = TxtValor.Text?.Trim() ?? string.Empty;
+            TxtSyncStatus.Text = status;
+        }
 
+        private async void BtnImport_Click(object sender, RoutedEventArgs e)
+        {
+            var nome = TxtCustomerName.Text?.Trim() ?? string.Empty;
+            var numero = TxtOrderNumber.Text?.Trim() ?? string.Empty;
+            var valorRaw = TxtOrderValue.Text?.Trim() ?? string.Empty;
+
+            // Validações
             if (string.IsNullOrWhiteSpace(nome))
             {
                 MessageBox.Show("Informe o nome do cliente.", "Importação ERP", MessageBoxButton.OK, MessageBoxImage.Warning);
-                TxtCliente.Focus();
+                TxtCustomerName.Focus();
                 return;
             }
             if (string.IsNullOrWhiteSpace(numero))
             {
                 MessageBox.Show("Informe o número do pedido.", "Importação ERP", MessageBoxButton.OK, MessageBoxImage.Warning);
-                TxtNumeroPedido.Focus();
+                TxtOrderNumber.Focus();
                 return;
             }
             if (!decimal.TryParse(valorRaw, NumberStyles.Number, CultureInfo.CurrentCulture, out var valor) || valor <= 0)
             {
                 MessageBox.Show("Informe o valor da compra (maior que zero).", "Importação ERP", MessageBoxButton.OK, MessageBoxImage.Warning);
-                TxtValor.Focus();
+                TxtOrderValue.Focus();
                 return;
             }
 
+            // Desabilitar botão durante processamento
+            BtnImport.IsEnabled = false;
+            UpdateSyncStatus("Processando importação...");
+
             try
             {
+                // Simular sincronização com API ERP
+                await Task.Delay(1000); // Simula chamada à API
+                UpdateSyncStatus("Sincronizando com ERP...");
+
                 using var conn = new SqliteConnection(GetConnectionString());
                 conn.Open();
                 EnsureTables(conn);
@@ -78,13 +94,30 @@ namespace PDV_MedusaX8
                 OrderNumber = numero;
                 OrderValue = valor;
 
+                UpdateSyncStatus("Importação concluída com sucesso!");
+                await Task.Delay(500); // Mostrar mensagem de sucesso
+
                 this.DialogResult = true;
                 this.Close();
             }
             catch (Exception ex)
             {
+                UpdateSyncStatus("Erro na importação");
                 MessageBox.Show($"Falha ao importar pedido: {ex.Message}", "Importação ERP", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+            finally
+            {
+                BtnImport.IsEnabled = true;
+            }
+        }
+
+        private void BtnClear_Click(object sender, RoutedEventArgs e)
+        {
+            TxtCustomerName.Text = string.Empty;
+            TxtOrderNumber.Text = string.Empty;
+            TxtOrderValue.Text = string.Empty;
+            UpdateSyncStatus("Formulário limpo - Pronto para nova importação");
+            TxtCustomerName.Focus();
         }
 
         private void BtnCancelar_Click(object sender, RoutedEventArgs e)

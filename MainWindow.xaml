@@ -6,11 +6,11 @@
         mc:Ignorable="d"
         Title="PDV - MedusaX8"
         WindowStyle="None" WindowState="Maximized" AllowsTransparency="False"
-        Background="#f8f8f8"
+        Background="#f5f5f5"
         FontFamily="Segoe UI">
 
     <Window.Resources>
-        <Color x:Key="CorFundoApp">#f8f8f8</Color>
+        <Color x:Key="CorFundoApp">#f5f5f5</Color>
         <Color x:Key="CorPrimariaAcao">#007bff</Color>
         <Color x:Key="CorFinalizar">#28a745</Color>
         <Color x:Key="CorCancelar">#dc3545</Color>
@@ -47,6 +47,21 @@
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#0056b3"/>
+                </Trigger>
+                <!-- Aparência desativada: cor mais clara para indicar indisponível -->
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#E0E0E0"/>
+                    <Setter Property="Foreground" Value="#9E9E9E"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Estilo global para itens de menu: desabilitado com cor mais clara -->
+        <Style TargetType="MenuItem">
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Foreground" Value="#9E9E9E"/>
+                    <Setter Property="Opacity" Value="0.8"/>
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -131,28 +146,95 @@
     </Window.Resources>
 
     <!-- Grid raiz sem margem externa para usar 100% da janela -->
-    <Grid Background="{StaticResource BrFundoApp}">
+    <Grid Background="{StaticResource BrFundoApp}" ContextMenuOpening="MainGrid_ContextMenuOpening">
+        <Grid.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="Configurações (F4)" Tag="F4" Click="MenuShortcut_Click"/>
+                <Separator/>
+                <MenuItem Header="Sangria (Ctrl+L)" Tag="CTRL+L" Click="MenuShortcut_Click"/>
+                <MenuItem Header="Suprimento (Ctrl+S)" Tag="CTRL+S" Click="MenuShortcut_Click"/>
+                <MenuItem Header="Fechar Caixa (Ctrl+F)" Tag="CTRL+F" Click="MenuShortcut_Click"/>
+                <MenuItem Header="Consulta NFC-e" Tag="NFCe" Click="MenuShortcut_Click"/>
+                <MenuItem Header="Receber Título (Ctrl+R)" Tag="CTRL+R" Click="MenuShortcut_Click"/>
+            </ContextMenu>
+        </Grid.ContextMenu>
         <Grid.RowDefinitions>
-            <RowDefinition Height="38"/>
+            <RowDefinition Height="40"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Topo (30px) com controles de janela -->
-        <Border Grid.Row="0" Panel.ZIndex="10" Margin="0,0,0,15" BorderBrush="{StaticResource CorBorda}" BorderThickness="0,0,0,0" Background="{StaticResource BrFundoApp}">
-            
-            <Grid>
-                <TextBlock Text="Sistema PDV MedusaX8 | Versão: 1.0.0 (DB: 5.1)"
-                           VerticalAlignment="Center" Margin="10,0,0,0"
-                           Foreground="{StaticResource BrTexto}" FontSize="12"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Content="-" Width="30" Click="MinimizeWindow" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" FontSize="14"/>
-                    <Button Content="&#9744;" Width="30" Click="MaximizeRestoreWindow" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" FontSize="14"/>
-                    <Button Name="BtnCloseWindow" Content="X" Width="30" Background="{StaticResource BrCancelar}" Foreground="White" Click="CloseWindow" FontSize="14"/>
-                </StackPanel>
-            </Grid>
-        </Border>
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="65*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="35*"/>
+            </Grid.ColumnDefinitions>
+            <!-- Fundo ocupando a largura total alinhada às colunas do conteúdo -->
+            <Border Grid.ColumnSpan="3" Panel.ZIndex="0" Margin="8,0,8,15" BorderBrush="{StaticResource CorBorda}" BorderThickness="0,0,0,0" Background="{StaticResource BrFundoApp}"/>
+
+            <!-- Título alinhado à coluna esquerda -->
+            <TextBlock Grid.Column="0" Text="Sistema PDV MedusaX8 | Versão: 1.0.0 (DB: 5.1)"
+                       VerticalAlignment="Top" Margin="10,0,0,0"
+                       Foreground="{StaticResource BrTexto}" FontSize="12"/>
+
+            <!-- Botões ancorados ao canto direito da janela -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,8,0">
+                <Button Name="BtnSettingsHeader" Width="96" Height="26" Margin="0,0,8,0" VerticalContentAlignment="Center" Padding="0,2,0,2" Style="{StaticResource CompactButton}"
+                          Background="{StaticResource BrPrimariaAcao}" Foreground="White" FontSize="10"
+                          Click="BtnSettingsHeader_Click"
+                          PreviewMouseRightButtonDown="BtnSettingsHeader_PreviewMouseRightButtonDown"
+                          ToolTip="Dica: Ctrl + Clique direito abre a lista de atalhos">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE713;" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Top"/>
+                        <TextBlock Text="Configurações" VerticalAlignment="Top" Margin="0"/>
+                    </StackPanel>
+                    <Button.ContextMenu>
+                        <ContextMenu x:Name="SettingsContextMenu">
+                            <MenuItem Header="Abrir Configurações (F4)" Tag="F4" Click="MenuShortcut_Click"/>
+                            <Separator/>
+                            <MenuItem Header="Pagamento (F3)" Tag="F3" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Desconto Item (SHIFT+D)" Tag="SHIFT+D" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Cancelar Item (F1)" Tag="F1" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Cancelar Venda (F5)" Tag="F5" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Cliente (F7)" Tag="F7" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Consumidor (F12)" Tag="F12" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Produto Fácil (F8)" Tag="F8" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Consultar (F6)" Tag="consultar" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Balança (F10)" Tag="F10" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Sangria (Ctrl+L)" Tag="CTRL+L" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Suprimento (Ctrl+S)" Tag="CTRL+S" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Receber Título (Ctrl+R)" Tag="CTRL+R" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Fechar Caixa (Ctrl+F)" Tag="CTRL+F" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Operador (Ctrl+O)" Tag="CTRL+O" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="NFC-e Acompanhar" Tag="NFCe" Click="MenuShortcut_Click"/>
+                            <MenuItem Header="Importar Pedido ERP" Click="OpenERPImport_Click"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
+                <Button Name="BtnLogout" Width="120" Height="26" Margin="0,0,8,0" VerticalContentAlignment="Center" Padding="0,2,0,2" Style="{StaticResource CompactButton}" 
+                          Background="#FF6C757D" Foreground="White" FontSize="10" 
+                          Click="MenuShortcut_Click" Tag="CTRL+O" ToolTip="Trocar Operador">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE77B;" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Trocar Operador" VerticalAlignment="Center" Margin="0"/>
+                    </StackPanel>
+                </Button>
+                <!-- Aviso de situação do caixa -->
+                <Border x:Name="BadgeCaixaStatus" Height="22" Padding="8,2" Margin="0,2,8,0" CornerRadius="11"
+                        VerticalAlignment="Top" Background="#28a745" BorderBrush="#1e7e34" BorderThickness="1" >
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8B8;" FontSize="12" Margin="0,0,6,0" Foreground="White"/>
+                        <TextBlock x:Name="LblCaixaStatus" Text="Caixa Aberto" Foreground="White" FontSize="10"/>
+                    </StackPanel>
+                </Border>
+                <Button Content="-" Width="30" Height="26" Margin="0" Click="MinimizeWindow" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" FontSize="12" VerticalContentAlignment="Top" Padding="0,1,0,0"/>
+                <Button Content="&#9744;" Width="30" Height="26" Margin="0" Click="MaximizeRestoreWindow" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" FontSize="12" VerticalContentAlignment="Top" Padding="0,1,0,0"/>
+                <Button Name="BtnCloseWindow" Content="X" Width="30" Height="26" Background="{StaticResource BrCancelar}" Foreground="White" Click="CloseWindow" FontSize="12" VerticalContentAlignment="Top" Padding="0,1,0,0" Style="{StaticResource CompactButton}"/>
+            </StackPanel>
+        </Grid>
 
         <!-- Status/Info (Auto) -->
         <Grid Grid.Row="1" Margin="0,5,0,15">
@@ -161,7 +243,7 @@
                 <ColumnDefinition Width="99*"/>
                 <ColumnDefinition Width="0.5*"/>
             </Grid.ColumnDefinitions>
-            <Border Grid.Column="1" Background="#f5f5f5" Height="Auto" MinHeight="80" MaxHeight="120" CornerRadius="5"
+            <Border Grid.Column="1" Background="#c3cde6" Height="Auto" MinHeight="80" MaxHeight="120" CornerRadius="5"
                     BorderBrush="{StaticResource CorBorda}" BorderThickness="0" Padding="0">
                 <Grid>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -177,7 +259,7 @@
         </Grid>
 
         <!-- Conteúdo Principal (*) -->
-        <Grid Grid.Row="2" Margin="8,5,8,5">
+        <Grid Grid.Row="2" Margin="0,5,0,5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="65*"/>
                 <ColumnDefinition Width="10"/>
@@ -204,7 +286,7 @@
                             <DataGrid.Resources>
                                 <!-- Cabeçalho: cor definida pelo cliente (#dce7e9) -->
                                 <Style TargetType="{x:Type DataGridColumnHeader}">
-                                    <Setter Property="Background" Value="#dce7e9"/>
+                                    <Setter Property="Background" Value="#e9edf6"/>
                                     <Setter Property="Foreground" Value="#10181a"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                     <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -349,7 +431,13 @@
                 </Grid.RowDefinitions>
 
                 <Border Grid.Row="0" BorderBrush="{StaticResource CorBorda}" BorderThickness="0" Background="{StaticResource BrFundoApp}" Margin="0,0,0,5">
-                    <Image Source="/Assets/logo_medusax8.png" Stretch="Uniform" Name="ProductImageDisplay"/>
+                    <Grid>
+                        <Image Source="/Assets/logo_medusax8.png" Stretch="Uniform" Name="ProductImageDisplay"/>
+                        <Border Name="ExampleLogoPlaceholder" Background="#D32F2F" CornerRadius="6" Visibility="Collapsed" Margin="10">
+                            <TextBlock Text="LOGO EXEMPLO" Foreground="White" FontWeight="Bold" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <Image Name="CustomLogoImage" Stretch="Uniform" Visibility="Collapsed" Margin="10"/>
+                    </Grid>
                 </Border>
 
                 <Border Grid.Row="1" BorderBrush="{StaticResource BrPrimariaAcao}" BorderThickness="3">
@@ -387,7 +475,7 @@
                             </Grid>
                         </Border>
 
-                        <TextBox Name="InputCodeField" Grid.Column="1" KeyDown="InputCodeField_KeyDown"
+                        <TextBox Name="InputCodeField" Grid.Column="1" KeyDown="InputCodeField_KeyDown" PreviewMouseDown="InputCodeField_PreviewMouseDown"
                                  Background="{StaticResource BrFundoApp}"
                                  Foreground="{StaticResource BrTexto}"
                                  FontWeight="Bold" FontSize="18"
@@ -405,7 +493,7 @@
         <!-- Rodapé (DockPanel, 105px) -->
         <DockPanel Grid.Row="3" Background="{StaticResource BrFundoApp}" Margin="0,0,0,0">
 
-            <Border DockPanel.Dock="Top" Height="80" Margin="0,5,0,10"
+            <Border DockPanel.Dock="Top" Height="80" Margin="0,1,0,10"
                     BorderBrush="{StaticResource CorBorda}" BorderThickness="0"
                     Background="{StaticResource BrFundoApp}">
 
@@ -418,34 +506,33 @@
 
                         <Separator Margin="10,0" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"/>
 
-                        <Button Content="F4 &#x0a; Configurações" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <!-- Removido botão de Configurações dos atalhos, substituído por botão ao lado de Logout -->
                         <Button Name="BtnClienteShortcut" Tag="cliente" Content="F7 &#x0a; Cliente" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
                         <Button Tag="consumidor" Content="F12 &#x0a; Consumidor" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
-                        <Button Content="F8 &#x0a; Produtos Teste" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+            <Button Content="F8 &#x0a; Produto Fácil" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
                         <Button Content="F6 &#x0a; Consultar" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
                         <Button Content="F10 &#x0a; Balança" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
                         <!-- Removido: <Button Content="CTRL+P &#x0a; Nota" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/> -->
-                        <Button Content="CTRL+L &#x0a; Sangria" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
-                        <Button Content="CTRL+S &#x0a; Suprim." Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
-                        <Button Content="CTRL+R &#x0a; Receber Título" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
-                        <Button Content="CTRL+F &#x0a; Fechar Caixa" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
-                        <Button Content="CTRL+A &#x0a; Abertura" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
-                        <Button Content="CTRL+O &#x0a; Operador" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
-                        <Button Tag="NFCe" Content="NFC-e &#x0a; Acompanhar" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
-                        <Button Content="Importar Pedido ERP" Style="{StaticResource ShortcutButtonStyle}" Click="OpenERPImport_Click"/>
+                        <Button Name="BtnSangria" Content="CTRL+L &#x0a; Sangria" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Name="BtnSuprimento" Content="CTRL+S &#x0a; Suprim." Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Name="BtnReceberTitulo" Content="CTRL+R &#x0a; Receber Título" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Name="BtnFecharCaixa" Content="CTRL+F &#x0a; Fechar Caixa" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Name="BtnOperador" Content="CTRL+O &#x0a; Operador" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Name="BtnNFCe" Tag="NFCe" Content="NFC-e &#x0a; Acompanhar" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
+                        <Button Name="BtnERPImportShortcut" Content="Importar Pedido ERP" Style="{StaticResource ShortcutButtonStyle}" Click="OpenERPImport_Click"/>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
 
             <Border DockPanel.Dock="Bottom" Height="25" Background="{StaticResource BrFundoApp}">
-                <Grid Margin="5,0">
+                <Grid Margin="1,0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2*"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" VerticalAlignment="Center"
-                               Text="Operador: 001 João Silva | Caixa: 01"
+                    <TextBlock x:Name="TxtOperatorStatus" Grid.Column="0" VerticalAlignment="Center"
+                               Text="Operador: (não logado) | Caixa: --"
                                FontWeight="Bold" FontSize="10"/>
                     <TextBlock x:Name="TxtStatusBar" Grid.Column="1" VerticalAlignment="Center"
                                Text="" FontSize="10" TextAlignment="Right"/>

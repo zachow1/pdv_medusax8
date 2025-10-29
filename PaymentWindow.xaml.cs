@@ -357,10 +357,23 @@ namespace PDV_MedusaX8
 
         private void OpenSettings(object sender, RoutedEventArgs e)
         {
-            var sw = new SettingsWindow();
-            sw.Owner = this;
-            sw.ShowDialog();
-            LoadEnabledPaymentMethods();
+            // Exigir autorização de administrador ou fiscal antes de abrir as Configurações
+            var auth = new LoginWindow(authorizationMode: true) { Owner = this };
+            var okAuth = auth.ShowDialog();
+            if (okAuth == true &&
+                (string.Equals(auth.LoggedRole, "admin", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(auth.LoggedRole, "fiscal", StringComparison.OrdinalIgnoreCase)))
+            {
+                var sw = new SettingsWindow();
+                sw.Owner = this;
+                sw.ShowDialog();
+                LoadEnabledPaymentMethods();
+                return;
+            }
+            else
+            {
+                MessageBox.Show("Acesso negado. Necessário usuário administrador ou fiscal.", "Autorização", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private void CloseModal(object sender, RoutedEventArgs e)
@@ -742,10 +755,35 @@ namespace PDV_MedusaX8
                         DiscountIsPercent INTEGER NOT NULL,
                         DiscountPercent REAL NOT NULL,
                         DiscountReason TEXT,
-                        TotalFinal REAL NOT NULL
+                        TotalFinal REAL NOT NULL,
+                        Operator TEXT,
+                        CashRegisterNumber INTEGER
                     );";
                 cmdCreate.ExecuteNonQuery();
             }
+
+            // Migração defensiva: garantir colunas Operator e CashRegisterNumber
+            try
+            {
+                using var cmdInfo = conn.CreateCommand();
+                cmdInfo.CommandText = "PRAGMA table_info('Sales')";
+                using var rd = cmdInfo.ExecuteReader();
+                var cols = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                while (rd.Read()) cols.Add(rd.GetString(1));
+                if (!cols.Contains("Operator"))
+                {
+                    using var cmdAlter = conn.CreateCommand();
+                    cmdAlter.CommandText = "ALTER TABLE Sales ADD COLUMN Operator TEXT";
+                    cmdAlter.ExecuteNonQuery();
+                }
+                if (!cols.Contains("CashRegisterNumber"))
+                {
+                    using var cmdAlter2 = conn.CreateCommand();
+                    cmdAlter2.CommandText = "ALTER TABLE Sales ADD COLUMN CashRegisterNumber INTEGER";
+                    cmdAlter2.ExecuteNonQuery();
+                }
+            }
+            catch { }
 
             string? customerName = null;
             string? customerCPF = null;
@@ -758,8 +796,8 @@ namespace PDV_MedusaX8
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = @"
-                    INSERT INTO Sales (Date, CustomerName, CustomerCPF, TotalOriginal, DiscountAmount, DiscountIsPercent, DiscountPercent, DiscountReason, TotalFinal)
-                    VALUES (CURRENT_TIMESTAMP, $name, $cpf, $orig, $discAmt, $discIsPct, $discPct, $reason, $final);
+                    INSERT INTO Sales (Date, CustomerName, CustomerCPF, TotalOriginal, DiscountAmount, DiscountIsPercent, DiscountPercent, DiscountReason, TotalFinal, Operator, CashRegisterNumber)
+                    VALUES (CURRENT_TIMESTAMP, $name, $cpf, $orig, $discAmt, $discIsPct, $discPct, $reason, $final, $op, $cash);
                 ";
                 cmd.Parameters.AddWithValue("$name", string.IsNullOrWhiteSpace(customerName) ? (object)DBNull.Value : customerName);
                 cmd.Parameters.AddWithValue("$cpf", string.IsNullOrWhiteSpace(customerCPF) ? (object)DBNull.Value : customerCPF);
@@ -769,8 +807,32 @@ namespace PDV_MedusaX8
                 cmd.Parameters.AddWithValue("$discPct", SaleDiscountPercent);
                 cmd.Parameters.AddWithValue("$reason", string.IsNullOrWhiteSpace(SaleDiscountReason) ? (object)DBNull.Value : SaleDiscountReason);
                 cmd.Parameters.AddWithValue("$final", SaleTotal);
+                cmd.Parameters.AddWithValue("$op", PDV_MedusaX8.Services.SessionManager.CurrentUser ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("$cash", GetCashRegisterNumber(conn));
                 cmd.ExecuteNonQuery();
             }
+        }
+
+        private static int GetCashRegisterNumber(SqliteConnection conn)
+        {
+            int cashNumber = 1;
+            try
+            {
+                using var cmdGet = conn.CreateCommand();
+                cmdGet.CommandText = "SELECT Value FROM Settings WHERE Key='CashRegisterNumber' LIMIT 1";
+                var v = cmdGet.ExecuteScalar();
+                if (v != null && v != DBNull.Value && int.TryParse(v.ToString(), out var n)) cashNumber = n;
+                if (cashNumber == 0)
+                {
+                    using var cmdSerie = conn.CreateCommand();
+                    cmdSerie.CommandText = "SELECT Serie FROM ConfiguracoesNFCe LIMIT 1";
+                    var sv = cmdSerie.ExecuteScalar();
+                    if (sv != null && sv != DBNull.Value && int.TryParse(sv.ToString(), out var s)) cashNumber = s;
+                }
+                if (cashNumber == 0) cashNumber = 1;
+            }
+            catch { }
+            return cashNumber;
         }
 
     }
