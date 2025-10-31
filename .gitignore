@@ -21,6 +21,7 @@ logs/
 # Databases and local data
 medusax8.db
 pdv.db
+!Database/medusax8.db
 
 # Test and release artifacts
 teste/
