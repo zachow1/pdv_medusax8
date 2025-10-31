@@ -1,7 +1,8 @@
 <Window x:Class="PDV_MedusaX8.FechamentoCaixaWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Fechamento de Caixa" Height="480" Width="680" Background="#f7f7f7" WindowStartupLocation="CenterOwner">
+        Title="Fechamento de Caixa" Height="640" Width="760" Background="#f7f7f7" WindowStartupLocation="CenterOwner"
+        Loaded="FechamentoCaixaWindow_Loaded">
     <Border BorderBrush="#d0d0d0" BorderThickness="1" Padding="12">
         <Grid>
             <Grid.RowDefinitions>
@@ -11,117 +12,105 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+            <StackPanel x:Name="ResumoHeader" Orientation="Horizontal" Margin="0,0,0,8">
                 <TextBlock Text="Resumo do dia" FontSize="18" FontWeight="Bold"/>
-                <CheckBox x:Name="CbBlindMode" Content="Conferência às cegas" Margin="16,0,0,0" VerticalAlignment="Center" Checked="CbBlindMode_Checked" Unchecked="CbBlindMode_Unchecked"/>
             </StackPanel>
-
-            <Grid x:Name="SummaryGrid" Grid.Row="1" Margin="0,6,0,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-
-                <!-- Coluna Esquerda -->
-                <StackPanel Grid.Column="0" Orientation="Vertical" Margin="0,0,8,0">
-                    <TextBlock Text="Período" FontWeight="Bold"/>
-                    <TextBlock x:Name="TxtPeriodo" Text="Hoje" Margin="0,0,0,8"/>
-
-                    <TextBlock Text="Vendas (Sales)" FontWeight="Bold"/>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Total:" Width="120"/>
-                        <TextBlock x:Name="TxtTotalVendas" Text="R$ 0,00"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,8">
-                        <TextBlock Text="Qtd:" Width="120"/>
-                        <TextBlock x:Name="TxtQtdVendas" Text="0"/>
-                    </StackPanel>
-
-                    <TextBlock Text="Movimentos de Caixa" FontWeight="Bold"/>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Abertura:" Width="120"/>
-                        <TextBlock x:Name="TxtTotalAbertura" Text="R$ 0,00"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                        <TextBlock Text="Suprimento:" Width="120"/>
-                        <TextBlock x:Name="TxtTotalSuprimento" Text="R$ 0,00"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                        <TextBlock Text="Sangria:" Width="120"/>
-                        <TextBlock x:Name="TxtTotalSangria" Text="R$ 0,00"/>
-                    </StackPanel>
-                </StackPanel>
-
-                <!-- Coluna Direita -->
-                <StackPanel Grid.Column="1" Orientation="Vertical" Margin="8,0,0,0">
-                    <TextBlock Text="NFC-e" FontWeight="Bold"/>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="Total:" Width="140"/>
-                        <TextBlock x:Name="TxtTotalNFCe" Text="R$ 0,00"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,2,0,8">
-                        <TextBlock Text="Qtd:" Width="140"/>
-                        <TextBlock x:Name="TxtQtdNFCe" Text="0"/>
-                    </StackPanel>
-
-                    <TextBlock Text="Detalhes por tipos de pagamento" FontWeight="Bold"/>
-                    <ListView x:Name="LstPagamentosNFCe" Height="180" Margin="0,2,0,0" Background="Transparent" BorderBrush="Transparent">
-                        <ListView.View>
-                            <GridView>
-                                <GridViewColumn Header="Meio" DisplayMemberBinding="{Binding Meio}" Width="180"/>
-                                <GridViewColumn Header="Total" DisplayMemberBinding="{Binding TotalFmt}" Width="120"/>
-                            </GridView>
-                        </ListView.View>
-                    </ListView>
-                </StackPanel>
-            </Grid>
-
-            <!-- Painel de conferência às cegas -->
-            <StackPanel x:Name="BlindPanel" Grid.Row="1" Visibility="Collapsed" Margin="0,0,0,10">
-                <TextBlock Text="Informe os valores conferidos por meio de pagamento" FontWeight="Bold" Margin="0,0,0,8"/>
+            <!-- Resumo do período -->
+            <Border x:Name="ResumoPanel" Grid.Row="1" BorderBrush="#e0e0e0" BorderThickness="1" Padding="10" Background="White">
                 <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Text="Dinheiro (R$)" Grid.Row="0" Grid.Column="0"/>
-                    <TextBox x:Name="TxtBlindCash" Grid.Row="0" Grid.Column="1" Height="28"/>
-
-                    <TextBlock Text="Cartão Débito (R$)" Grid.Row="1" Grid.Column="0"/>
-                    <TextBox x:Name="TxtBlindCardDebit" Grid.Row="1" Grid.Column="1" Height="28"/>
-
-                    <TextBlock Text="Cartão Crédito (R$)" Grid.Row="2" Grid.Column="0"/>
-                    <TextBox x:Name="TxtBlindCardCredit" Grid.Row="2" Grid.Column="1" Height="28"/>
-
-                    <TextBlock Text="Cheques (R$)" Grid.Row="3" Grid.Column="0"/>
-                    <TextBox x:Name="TxtBlindCheques" Grid.Row="3" Grid.Column="1" Height="28"/>
-
-                    <TextBlock Text="PIX (R$)" Grid.Row="4" Grid.Column="0"/>
-                    <TextBox x:Name="TxtBlindPix" Grid.Row="4" Grid.Column="1" Height="28"/>
-
-                    <TextBlock Text="Observações" Grid.Row="5" Grid.Column="0"/>
-                    <TextBox x:Name="TxtBlindObs" Grid.Row="5" Grid.Column="1" Height="60" TextWrapping="Wrap" AcceptsReturn="True"/>
+                    <StackPanel Margin="0,0,10,0" Grid.Row="0" Grid.Column="0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Período:" Width="160"/>
+                            <TextBlock x:Name="TxtPeriodoLabel"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Total de Vendas:" Width="160"/>
+                            <TextBlock x:Name="TxtTotalVendasLabel"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Qtd. de Vendas:" Width="160"/>
+                            <TextBlock x:Name="TxtQtdVendasLabel"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Total NFC-e:" Width="160"/>
+                            <TextBlock x:Name="TxtTotalNFCeLabel"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Qtd. NFC-e:" Width="160"/>
+                            <TextBlock x:Name="TxtQtdNFCeLabel"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="10,0,0,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Abertura:" Width="160"/>
+                            <TextBlock x:Name="TxtTotalAberturaLabel"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Suprimento:" Width="160"/>
+                            <TextBlock x:Name="TxtTotalSuprimentoLabel"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Text="Sangria:" Width="160"/>
+                            <TextBlock x:Name="TxtTotalSangriaLabel"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <!-- Relação de formas de pagamento e valores -->
+                    <StackPanel x:Name="ResumoPagamentosPanel" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,10,0,0">
+                        <TextBlock Text="Formas de pagamento no período" FontWeight="Bold"/>
+                        <!-- Linhas serão adicionadas via code-behind -->
+                    </StackPanel>
                 </Grid>
-            </StackPanel>
+            </Border>
+
+            <!-- Painel de contagem física -->
+            <Border x:Name="ContagemPanel" Grid.Row="1" BorderBrush="#e0e0e0" BorderThickness="1" Padding="10" Background="#fbfbfb" Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock Text="Contagem Física do Caixa" FontWeight="Bold" Margin="0,0,0,8"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="Dinheiro:" Width="160"/>
+                        <TextBox x:Name="TxtTotalDinheiro" Width="160" Style="{StaticResource AppInputTextBox}" VerticalContentAlignment="Center" Padding="10,2"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="Cartão Débito:" Width="160"/>
+                        <TextBox x:Name="TxtTotalDebito" Width="160" Style="{StaticResource AppInputTextBox}" VerticalContentAlignment="Center" Padding="10,2"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="Cartão Crédito:" Width="160"/>
+                        <TextBox x:Name="TxtTotalCredito" Width="160" Style="{StaticResource AppInputTextBox}" VerticalContentAlignment="Center" Padding="10,2"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="Cheques:" Width="160"/>
+                        <TextBox x:Name="TxtTotalCheques" Width="160" Style="{StaticResource AppInputTextBox}" VerticalContentAlignment="Center" Padding="10,2"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="PIX:" Width="160"/>
+                        <TextBox x:Name="TxtTotalPix" Width="160" Style="{StaticResource AppInputTextBox}" VerticalContentAlignment="Center" Padding="10,2"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <TextBlock Text="Observações:" Width="160"/>
+                        <TextBox x:Name="TxtObservacoes" Width="360" Style="{StaticResource AppInputTextBox}" VerticalContentAlignment="Center" Padding="10,2"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
             <!-- Painel de autorização do supervisor (exibido quando obrigatório) -->
             <StackPanel x:Name="SupervisorPanel" Grid.Row="2" Visibility="Collapsed" Margin="0,0,0,10">
                 <TextBlock Text="Autorização do Supervisor" FontWeight="Bold"/>
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                     <TextBlock Text="Código:" Width="140"/>
-                    <TextBox x:Name="TxtSupervisorCode" Width="160"/>
+                    <TextBox x:Name="TxtSupervisorCode" Width="160" VerticalContentAlignment="Center" Padding="10,2"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                     <TextBlock Text="Senha:" Width="140"/>
-                    <PasswordBox x:Name="TxtSupervisorPassword" Width="160"/>
+                    <PasswordBox x:Name="TxtSupervisorPassword" Width="160" VerticalContentAlignment="Center" Padding="10,2"/>
                 </StackPanel>
             </StackPanel>
 

@@ -6,22 +6,10 @@
         mc:Ignorable="d"
         Title="PDV - MedusaX8"
         WindowStyle="None" WindowState="Maximized" AllowsTransparency="False"
-        Background="#f5f5f5"
+        Background="#dadada"
         FontFamily="Segoe UI">
 
     <Window.Resources>
-        <Color x:Key="CorFundoApp">#f5f5f5</Color>
-        <Color x:Key="CorPrimariaAcao">#007bff</Color>
-        <Color x:Key="CorFinalizar">#28a745</Color>
-        <Color x:Key="CorCancelar">#dc3545</Color>
-        <SolidColorBrush x:Key="CorBorda" Color="#e0e0e0"/>
-        <Color x:Key="CorTexto">#333333</Color>
-
-        <SolidColorBrush x:Key="BrFundoApp" Color="{StaticResource CorFundoApp}"/>
-        <SolidColorBrush x:Key="BrPrimariaAcao" Color="{StaticResource CorPrimariaAcao}"/>
-        <SolidColorBrush x:Key="BrFinalizar" Color="{StaticResource CorFinalizar}"/>
-        <SolidColorBrush x:Key="BrCancelar" Color="{StaticResource CorCancelar}"/>
-        <SolidColorBrush x:Key="BrTexto" Color="{StaticResource CorTexto}"/>
 
         <Style x:Key="ShortcutButtonStyle" TargetType="Button">
             <Setter Property="Width" Value="70"/>
@@ -146,7 +134,7 @@
     </Window.Resources>
 
     <!-- Grid raiz sem margem externa para usar 100% da janela -->
-    <Grid Background="{StaticResource BrFundoApp}" ContextMenuOpening="MainGrid_ContextMenuOpening">
+    <Grid x:Name="RootGrid" Background="{StaticResource BrFundoApp}" ContextMenuOpening="MainGrid_ContextMenuOpening">
         <Grid.ContextMenu>
             <ContextMenu>
                 <MenuItem Header="Configurações (F4)" Tag="F4" Click="MenuShortcut_Click"/>
@@ -243,7 +231,7 @@
                 <ColumnDefinition Width="99*"/>
                 <ColumnDefinition Width="0.5*"/>
             </Grid.ColumnDefinitions>
-            <Border Grid.Column="1" Background="#c3cde6" Height="Auto" MinHeight="80" MaxHeight="120" CornerRadius="5"
+            <Border Grid.Column="1" Background="#c9c9c9" Height="Auto" MinHeight="80" MaxHeight="120" CornerRadius="5"
                     BorderBrush="{StaticResource CorBorda}" BorderThickness="0" Padding="0">
                 <Grid>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -259,7 +247,7 @@
         </Grid>
 
         <!-- Conteúdo Principal (*) -->
-        <Grid Grid.Row="2" Margin="0,5,0,5">
+        <Grid x:Name="MainContentGrid" Grid.Row="2" Margin="0,5,0,5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="65*"/>
                 <ColumnDefinition Width="10"/>
@@ -267,18 +255,18 @@
             </Grid.ColumnDefinitions>
 
             <!-- Coluna Esquerda - Itens e Totais -->
-            <Border Grid.Column="0" BorderBrush="{StaticResource CorBorda}" BorderThickness="0" Background="{StaticResource BrFundoApp}">
-                <Grid>
+            <Border Grid.Column="0" BorderBrush="{StaticResource CorBorda}" BorderThickness="0" Background="{StaticResource BrFundoApp}" Margin="8,0,0,0">
+                <Grid VerticalAlignment="Stretch">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="120"/>
                     </Grid.RowDefinitions>
 
                     <!-- Tabela com estilo moderno e sem linhas/sombras -->
-                    <Border Grid.Row="0" Background="#FFFFFF" CornerRadius="6" Padding="0" BorderThickness="0">
+                    <Border Grid.Row="0" Background="#FFFFFF" CornerRadius="6" Padding="6" BorderThickness="0" Name="LeftTopBorder" Margin="0,0,0,0" VerticalAlignment="Stretch" ClipToBounds="True" SnapsToDevicePixels="True">
                         <DataGrid Name="DgvProdutos" HeadersVisibility="Column" IsReadOnly="True"
                                    AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-                                   GridLinesVisibility="None" RowHeight="36" SelectionMode="Single"
+                                   GridLinesVisibility="None" RowHeight="36" ColumnHeaderHeight="34" SelectionMode="Single"
                                    AlternationCount="2" Foreground="#10181a" FontSize="13"
                                    FrozenColumnCount="2"
                                    BorderThickness="0" Background="Transparent"
@@ -290,7 +278,8 @@
                                     <Setter Property="Foreground" Value="#10181a"/>
                                     <Setter Property="FontWeight" Value="SemiBold"/>
                                     <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                                    <Setter Property="Padding" Value="10,10,15,10"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                    <Setter Property="Padding" Value="10,6,15,6"/>
                                     <Setter Property="FontSize" Value="14"/>
                                 </Style>
 
@@ -305,6 +294,7 @@
                                     <Setter Property="BorderThickness" Value="0"/>
                                     <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
                                     <Setter Property="Foreground" Value="#10181a"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
                                     <Style.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
                                             <Setter Property="Background" Value="Transparent"/>
@@ -322,11 +312,13 @@
                                     <Setter Property="TextAlignment" Value="Right"/>
                                     <Setter Property="Margin" Value="0,0,5,0"/>
                                     <Setter Property="Foreground" Value="#10181a"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                                 <Style x:Key="QtColumnStyle" TargetType="{x:Type TextBlock}">
                                     <Setter Property="TextAlignment" Value="Right"/>
                                     <Setter Property="Margin" Value="0,0,5,0"/>
                                     <Setter Property="Foreground" Value="#10181a"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsCancellation}" Value="True">
                                             <Setter Property="Foreground" Value="#8a0000"/>
@@ -340,11 +332,13 @@
                                     <Setter Property="TextAlignment" Value="Left"/>
                                     <Setter Property="Margin" Value="0,0,5,0"/>
                                     <Setter Property="Foreground" Value="#10181a"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                                 <Style x:Key="CenterAlignStyle" TargetType="{x:Type TextBlock}">
                                     <Setter Property="TextAlignment" Value="Center"/>
                                     <Setter Property="Margin" Value="0,0,5,0"/>
                                     <Setter Property="Foreground" Value="#10181a"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
 
                                 <!-- Estilos conscientes de cancelamento (herdam alinhamentos) -->
@@ -380,7 +374,7 @@
 
                                         <!-- Zebra apenas quando não cancelado (por ordem, será sobrescrito pelo trigger acima se cancelado) -->
                                         <Trigger Property="ItemsControl.AlternationIndex" Value="1">
-                                            <Setter Property="Background" Value="#f9f9f9"/>
+                                            <Setter Property="Background" Value="#e5e4e2"/>
                                         </Trigger>
 
                                         <!-- Hover só quando não cancelado -->
@@ -389,7 +383,7 @@
                                                 <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True"/>
                                                 <Condition Binding="{Binding IsCancellation}" Value="False"/>
                                             </MultiDataTrigger.Conditions>
-                                            <Setter Property="Background" Value="#f0f8ff"/>
+                                            <Setter Property="Background" Value="#eaf2ff"/>
                                         </MultiDataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -430,9 +424,9 @@
                     <RowDefinition Height="80"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" BorderBrush="{StaticResource CorBorda}" BorderThickness="0" Background="{StaticResource BrFundoApp}" Margin="0,0,0,5">
+                <Border Grid.Row="0" BorderBrush="{StaticResource CorBorda}" BorderThickness="0" Background="{StaticResource BrFundoApp}" Margin="0,0,0,0" Name="RightTopBorder" VerticalAlignment="Stretch" CornerRadius="6">
                     <Grid>
-                        <Image Source="/Assets/logo_medusax8.png" Stretch="Uniform" Name="ProductImageDisplay"/>
+                        <Image Source="/Assets/logo_medusax8.png" Stretch="Uniform" Name="ProductImageDisplay" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <Border Name="ExampleLogoPlaceholder" Background="#D32F2F" CornerRadius="6" Visibility="Collapsed" Margin="10">
                             <TextBlock Text="LOGO EXEMPLO" Foreground="White" FontWeight="Bold" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
@@ -457,7 +451,7 @@
 
                                 <TextBox Name="InputQtyField"
                                          HorizontalAlignment="Center" VerticalAlignment="Center"
-                                         Margin="6,4,6,6"
+                                         Margin="6,0,6,0"
                                          FontSize="18" FontWeight="Bold"
                                          Background="Transparent" Foreground="White"
                                          BorderThickness="0"
@@ -476,7 +470,7 @@
                         </Border>
 
                         <TextBox Name="InputCodeField" Grid.Column="1" KeyDown="InputCodeField_KeyDown" PreviewMouseDown="InputCodeField_PreviewMouseDown"
-                                 Background="{StaticResource BrFundoApp}"
+                                 Background="#33007BFF"
                                  Foreground="{StaticResource BrTexto}"
                                  FontWeight="Bold" FontSize="18"
                                  VerticalContentAlignment="Center"
@@ -517,7 +511,6 @@
                         <Button Name="BtnSuprimento" Content="CTRL+S &#x0a; Suprim." Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
                         <Button Name="BtnReceberTitulo" Content="CTRL+R &#x0a; Receber Título" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
                         <Button Name="BtnFecharCaixa" Content="CTRL+F &#x0a; Fechar Caixa" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
-                        <Button Name="BtnOperador" Content="CTRL+O &#x0a; Operador" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
                         <Button Name="BtnNFCe" Tag="NFCe" Content="NFC-e &#x0a; Acompanhar" Style="{StaticResource ShortcutButtonStyle}" Click="ShortcutAction"/>
                         <Button Name="BtnERPImportShortcut" Content="Importar Pedido ERP" Style="{StaticResource ShortcutButtonStyle}" Click="OpenERPImport_Click"/>
                     </StackPanel>

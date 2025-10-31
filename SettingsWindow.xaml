@@ -69,10 +69,8 @@
             <Setter Property="Padding" Value="12,10"/>
         </Style>
 
-        <!-- Estilo de TextBox moderno (altura, padding, foco) -->
-        <Style TargetType="TextBox">
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Padding" Value="6,4"/>
+        <!-- Estilo de TextBox baseado no AppInputTextBox (centralização e altura padronizada) -->
+        <Style TargetType="TextBox" BasedOn="{StaticResource AppInputTextBox}">
             <Setter Property="Margin" Value="4"/>
             <Setter Property="BorderBrush" Value="#CBD5E1"/>
             <Setter Property="Background" Value="#FFFFFF"/>
@@ -113,6 +111,36 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="{DynamicResource BaseFontSize}"/>
         </Style>
+
+        <!-- Slim blue switch-like CheckBox style -->
+        <Style x:Key="SlimBlueCheckBox" TargetType="CheckBox">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Width="36" Height="18">
+                            <Border x:Name="SwitchTrack" CornerRadius="9" Background="#90CAF9" BorderBrush="#1976D2" BorderThickness="1"/>
+                            <Ellipse x:Name="SwitchThumb" Width="16" Height="16" Fill="#1976D2" Margin="1,1,0,1" HorizontalAlignment="Left"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="SwitchTrack" Property="Background" Value="#BBDEFB"/>
+                                <Setter TargetName="SwitchThumb" Property="HorizontalAlignment" Value="Right"/>
+                                <Setter TargetName="SwitchThumb" Property="Margin" Value="0,1,1,1"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="SwitchTrack" Property="Opacity" Value="0.5"/>
+                                <Setter TargetName="SwitchThumb" Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -139,7 +167,14 @@
                                 <DataGridTextColumn Header="Código" Binding="{Binding Code}" IsReadOnly="True" Width="120"/>
                                 <DataGridTextColumn Header="Descrição" Binding="{Binding Name}" Width="*"/>
                                 <DataGridTextColumn Header="Ordem" Binding="{Binding DisplayOrder, Mode=OneWay}" IsReadOnly="True" Width="80"/>
-                                <DataGridCheckBoxColumn Header="Ativo" Binding="{Binding IsEnabled}" Width="100"/>
+                                <DataGridCheckBoxColumn Header="Ativo" Binding="{Binding IsEnabled}" Width="80">
+                                    <DataGridCheckBoxColumn.ElementStyle>
+                                        <Style TargetType="CheckBox" BasedOn="{StaticResource SlimBlueCheckBox}"/>
+                                    </DataGridCheckBoxColumn.ElementStyle>
+                                    <DataGridCheckBoxColumn.EditingElementStyle>
+                                        <Style TargetType="CheckBox" BasedOn="{StaticResource SlimBlueCheckBox}"/>
+                                    </DataGridCheckBoxColumn.EditingElementStyle>
+                                </DataGridCheckBoxColumn>
                                 <DataGridComboBoxColumn Header="Vínculo" Width="120"
                                                         SelectedItemBinding="{Binding LinkType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                         ItemsSource="{Binding ElementName=SettingsWin, Path=LinkTypes}"/>
@@ -162,11 +197,14 @@
                         
                         <StackPanel Grid.Row="0" Orientation="Vertical" Margin="0,0,0,10">
                             <TextBlock Text="Configurações de NFC-e" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,8">
+                                <Button x:Name="BtnToggleNFCeEdit" Content="Habilitar Edição" Click="ToggleNFCeEdit_Click" Padding="10,4" Background="{StaticResource BrCancelar}" Foreground="White"/>
+                            </StackPanel>
                             
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock Text="Certificado:" Width="120" VerticalAlignment="Center"/>
-                                <TextBox Name="TxtCert" IsReadOnly="True" Width="400"/>
-                                <Button Content="Selecionar..." Margin="8,0,0,0" Click="SelectCert_Click"/>
+                                <TextBox Name="TxtCert" IsReadOnly="True" Width="400" VerticalContentAlignment="Center" Padding="10,2"/>
+                                <Button x:Name="BtnSelectCert" Content="Selecionar..." Margin="8,0,0,0" Click="SelectCert_Click"/>
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
@@ -179,27 +217,27 @@
 
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock Text="Número do caixa:" Width="120" VerticalAlignment="Center"/>
-                                <TextBox Name="TxtCashRegister" Width="120" PreviewTextInput="NumericOnly_PreviewTextInput"/>
+                                <TextBox Name="TxtCashRegister" Width="120" PreviewTextInput="NumericOnly_PreviewTextInput" VerticalContentAlignment="Center" Padding="10,2"/>
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock Text="Série NFC-e:" Width="120" VerticalAlignment="Center"/>
-                                <TextBox Name="TxtSerie" Width="120" PreviewTextInput="NumericOnly_PreviewTextInput"/>
+                                <TextBox Name="TxtSerie" Width="120" PreviewTextInput="NumericOnly_PreviewTextInput" VerticalContentAlignment="Center" Padding="10,2"/>
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock Text="Próxima nota:" Width="120" VerticalAlignment="Center"/>
-                                <TextBox Name="TxtNextNumber" Width="120" PreviewTextInput="NumericOnly_PreviewTextInput"/>
+                                <TextBox Name="TxtNextNumber" Width="120" PreviewTextInput="NumericOnly_PreviewTextInput" VerticalContentAlignment="Center" Padding="10,2"/>
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock Text="CSC Id:" Width="120" VerticalAlignment="Center"/>
-                                <TextBox Name="TxtCSCId" Width="160"/>
+                                <TextBox Name="TxtCSCId" Width="160" VerticalContentAlignment="Center" Padding="10,2"/>
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                 <TextBlock Text="CSC:" Width="120" VerticalAlignment="Center"/>
-                                <TextBox Name="TxtCSC" Width="320"/>
+                                <TextBox Name="TxtCSC" Width="320" VerticalContentAlignment="Center" Padding="10,2"/>
                             </StackPanel>
                         </StackPanel>
 
@@ -307,25 +345,36 @@
                             <RowDefinition Height="*"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
+                        <!-- Reorganização: três abas internas: Geral | Supervisor | Imagem -->
                         <Grid Grid.Row="0" Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Orientation="Vertical">
-                                <CheckBox Name="ChkEnableF9" Content="Permitir alterar preço unitário com F9"/>
-                                <CheckBox Name="ChkPromptConsumer" Content="Solicitar consumidor ao iniciar a venda?"/>
-                                <CheckBox Name="ChkRequireF2ToStartSale" Content="Exigir F2 para iniciar venda"/>
-                                <CheckBox Name="ChkImportERPOrders" Content="Importar pedido de venda do ERP"/>
-                                <GroupBox Header="Exigir Supervisor" Margin="0,8,0,0">
+                            <TabControl>
+                                <TabItem Header="Geral">
+                                    <Grid Margin="0,10,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Orientation="Vertical">
+                                            <CheckBox Name="ChkEnableF9" Content="Permitir alterar preço unitário com F9"/>
+                                            <CheckBox Name="ChkPromptConsumer" Content="Solicitar consumidor ao iniciar a venda?"/>
+                                            <CheckBox Name="ChkRequireF2ToStartSale" Content="Exigir F2 para iniciar venda"/>
+                                            <CheckBox Name="ChkImportERPOrders" Content="Importar pedido de venda do ERP"/>
+                                            <CheckBox Name="ChkEnableBlindCashClosure" Content="Habilitar Conferência às Cegas"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Vertical" Margin="20,0,0,0">
+                                            <TextBlock Text="Desconto máximo (%)" VerticalAlignment="Center"/>
+                                            <TextBox Name="TxtMaxDiscountPercent" Width="100"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </TabItem>
+                                <TabItem Header="Supervisor">
                                     <StackPanel Margin="8" Orientation="Vertical">
                                         <CheckBox Name="ChkRequireSupervisorForSangria" Content="Exigir supervisor para Sangria"/>
                                         <CheckBox Name="ChkRequireSupervisorForOpeningCash" Content="Exigir supervisor para Abrir Caixa"/>
                                         <CheckBox Name="ChkRequireSupervisorForClosingCash" Content="Exigir supervisor para Fechar Caixa"/>
                                     </StackPanel>
-                                </GroupBox>
-                                
-                                <GroupBox Header="Imagem/Logo" Margin="0,8,0,0">
+                                </TabItem>
+                                <TabItem Header="Imagem">
                                     <StackPanel Margin="8" Orientation="Vertical">
                                         <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                             <TextBlock Text="Arquivo de imagem:" Width="120" VerticalAlignment="Center"/>
@@ -341,12 +390,8 @@
                                         </StackPanel>
                                         <CheckBox Name="ChkShowLogo" Content="Exibir logo na área principal" Margin="0,8,0,0"/>
                                     </StackPanel>
-                                </GroupBox>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Vertical" Margin="20,0,0,0">
-                                <TextBlock Text="Desconto máximo (%)" VerticalAlignment="Center"/>
-                                <TextBox Name="TxtMaxDiscountPercent" Width="100"/>
-                            </StackPanel>
+                                </TabItem>
+                            </TabControl>
                         </Grid>
                         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button Content="Salvar Opções" Click="SaveOptions_Click" Background="{StaticResource BrFinalizar}" Foreground="White"/>
@@ -450,8 +495,9 @@
                             <TabItem Header="Geral">
                                 <DockPanel>
                                     <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
-                                        <StackPanel Margin="8" Orientation="Vertical" >
-    <GroupBox Margin="0,0,0,8">
+                                        <!-- Sub-abas: Dados Gerais | Endereço -->
+                                        <TabControl Margin="8">
+                                            <TabItem Header="Dados Gerais">
                                                 <Grid Margin="8">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
@@ -498,9 +544,8 @@
                                                     <TextBlock Text="Website" Grid.Row="4" Grid.Column="2" VerticalAlignment="Center"/>
         <TextBox x:Name="TxtEmpresaWebsite" Grid.Row="4" Grid.Column="3" Margin="4" IsReadOnly="True"/>
                                                 </Grid>
-                                            </GroupBox>
-
-    <GroupBox Header="Endereço da Empresa">
+                                            </TabItem>
+                                            <TabItem Header="Endereço">
                                                 <Grid Margin="8">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto"/>
@@ -551,8 +596,8 @@
                                                         <ComboBoxItem Content="SP"/><ComboBoxItem Content="SE"/><ComboBoxItem Content="TO"/>
                                                     </ComboBox>
                                                 </Grid>
-                                            </GroupBox>
-                                        </StackPanel>
+                                            </TabItem>
+                                        </TabControl>
                                     </ScrollViewer>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8" DockPanel.Dock="Bottom">
     <Button Content="Salvar Empresa" Margin="0,0,8,0" Click="SaveEmpresa_Click" IsEnabled="False"/>
@@ -562,95 +607,239 @@
                             <TabItem Header="Contador">
                                 <DockPanel>
                                     <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto">
-                                        <StackPanel Margin="8" Orientation="Vertical">
-    <GroupBox Margin="0,0,0,8">
-                                                <Grid Margin="8">
+                                        <StackPanel>
+                                            <Grid>
+                                                <Grid>
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="2*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="1.5*"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                    </Grid.RowDefinitions>
-
-                                                    <TextBlock Text="Nome" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorNome" Grid.Row="0" Grid.Column="1" Margin="4" IsReadOnly="True"/>
-                                                    <TextBlock Text="CRC" Grid.Row="0" Grid.Column="2" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorCRC" Grid.Row="0" Grid.Column="3" Margin="4" IsReadOnly="True"/>
-
-                                                    <TextBlock Text="CNPJ" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorCNPJ" Grid.Row="1" Grid.Column="1" Margin="4" MaxLength="14" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="CNPJ_TextChanged" LostFocus="CNPJ_Validate_LostFocus" ToolTip="Somente dígitos (14)" IsReadOnly="True"/>
-                                                    <TextBlock Text="CPF" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorCPF" Grid.Row="1" Grid.Column="3" Margin="4" MaxLength="11" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="CPF_TextChanged" LostFocus="CPF_Validate_LostFocus" ToolTip="Somente dígitos (11)" IsReadOnly="True"/>
-
-                                                    <TextBlock Text="Email" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorEmail" Grid.Row="2" Grid.Column="1" Margin="4" IsReadOnly="True"/>
-                                                    <TextBlock Text="Telefone" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorTelefone" Grid.Row="2" Grid.Column="3" Margin="4" MaxLength="11" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="Telefone_TextChanged" ToolTip="DDD+Número (somente dígitos)" IsReadOnly="True"/>
+                                                    <CheckBox x:Name="ChkEmpresaContabil" Grid.Column="1" Content="Empresa Contábil" Margin="8" IsChecked="True" Checked="ChkEmpresaContabil_Checked" Unchecked="ChkEmpresaContabil_Unchecked"/>
                                                 </Grid>
-                                            </GroupBox>
+                                            </Grid>
+                                            <TabControl Margin="8">
+                                                        <TabItem Header="Dados do contador">
+                                                            <TabControl Margin="0">
+                                                                <TabItem Header="Dados">
+                                                                    <Grid Margin="8">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                            <ColumnDefinition Width="2.5*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                            <ColumnDefinition Width="2*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                            <ColumnDefinition Width="2*"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <Grid.RowDefinitions>
+                                                                            <RowDefinition Height="Auto"/>
+                                                                            <RowDefinition Height="Auto"/>
+                                                                            <RowDefinition Height="Auto"/>
+                                                                            <RowDefinition Height="Auto"/>
+                                                                        </Grid.RowDefinitions>
+                                                                        <TextBlock Text="Nome" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                        <TextBox x:Name="TxtContadorNome" Grid.Row="0" Grid.Column="1" Margin="4" IsReadOnly="True"/>
 
-                                            <GroupBox Header="Contato e Endereço do Contador">
-                                                <Grid Margin="8">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="2*"/>
-                                                        <ColumnDefinition Width="Auto"/>
-                                                        <ColumnDefinition Width="1.5*"/>
-                                                    </Grid.ColumnDefinitions>
-                                                    <Grid.RowDefinitions>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                        <RowDefinition Height="Auto"/>
-                                                    </Grid.RowDefinitions>
+                                                                        <TextBlock Text="CPF" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                        <TextBox x:Name="TxtContadorCPF" Grid.Row="1" Grid.Column="1" Margin="4" MaxLength="11" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="CPF_TextChanged" LostFocus="CPF_Validate_LostFocus" ToolTip="Somente dígitos (11)" IsReadOnly="True"/>
+                                                                        <TextBlock Text="Email" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                        <TextBox x:Name="TxtContadorEmail" Grid.Row="1" Grid.Column="3" Margin="4" IsReadOnly="True"/>
 
-                                                    <TextBlock Text="Celular" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorCelular" Grid.Row="0" Grid.Column="1" Margin="4" MaxLength="11" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="Telefone_TextChanged" ToolTip="DDD+Número (somente dígitos)" IsReadOnly="True"/>
-                                                    <TextBlock Text="CEP" Grid.Row="0" Grid.Column="2" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorCEP" Grid.Row="0" Grid.Column="3" Margin="4" MaxLength="8" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="CEP_TextChanged" ToolTip="Somente dígitos (8)" IsReadOnly="True"/>
+                                                                        <TextBlock Text="Telefone" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                        <TextBox x:Name="TxtContadorTelefone" Grid.Row="2" Grid.Column="1" Margin="4" MaxLength="11" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="Telefone_TextChanged" ToolTip="DDD+Número (somente dígitos)" IsReadOnly="True"/>
 
-                                                    <TextBlock Text="Logradouro" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorLogradouro" Grid.Row="1" Grid.Column="1" Margin="4" IsReadOnly="True"/>
-                                                    <TextBlock Text="Número" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorNumero" Grid.Row="1" Grid.Column="3" Margin="4" MaxLength="6" PreviewTextInput="NumericOnly_PreviewTextInput" IsReadOnly="True"/>
+                                                                        <TextBlock Text="Estado (CRC)" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                        <ComboBox x:Name="CmbContadorEstadoCRC" Grid.Row="3" Grid.Column="1" Margin="4" MinWidth="140" IsEditable="False" SelectedValuePath="Content" IsEnabled="False">
+                                                                            <ComboBoxItem Content="AC"/><ComboBoxItem Content="AL"/><ComboBoxItem Content="AP"/><ComboBoxItem Content="AM"/>
+                                                                            <ComboBoxItem Content="BA"/><ComboBoxItem Content="CE"/><ComboBoxItem Content="DF"/><ComboBoxItem Content="ES"/>
+                                                                            <ComboBoxItem Content="GO"/><ComboBoxItem Content="MA"/><ComboBoxItem Content="MT"/><ComboBoxItem Content="MS"/>
+                                                                            <ComboBoxItem Content="MG"/><ComboBoxItem Content="PA"/><ComboBoxItem Content="PB"/><ComboBoxItem Content="PR"/>
+                                                                            <ComboBoxItem Content="PE"/><ComboBoxItem Content="PI"/><ComboBoxItem Content="RJ"/><ComboBoxItem Content="RN"/>
+                                                                            <ComboBoxItem Content="RS"/><ComboBoxItem Content="RO"/><ComboBoxItem Content="RR"/><ComboBoxItem Content="SC"/>
+                                                                            <ComboBoxItem Content="SP"/><ComboBoxItem Content="SE"/><ComboBoxItem Content="TO"/>
+                                                                        </ComboBox>
+                                                                        <TextBlock Text="CRC" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                        <TextBox x:Name="TxtContadorCRC" Grid.Row="3" Grid.Column="3" Margin="4" MinWidth="140" IsReadOnly="True"/>
 
-                                                    <TextBlock Text="Complemento" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorComplemento" Grid.Row="2" Grid.Column="1" Margin="4" IsReadOnly="True"/>
-                                                    <TextBlock Text="Bairro" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorBairro" Grid.Row="2" Grid.Column="3" Margin="4" IsReadOnly="True"/>
+                                                                        <TextBlock Text="Tipo CRC" Grid.Row="3" Grid.Column="4" VerticalAlignment="Center"/>
+                                                                        <ComboBox x:Name="CmbContadorCRCTipo" Grid.Row="3" Grid.Column="5" Margin="4" MinWidth="140" IsEditable="False" SelectedValuePath="Content" IsEnabled="False">
+                                                                            <ComboBoxItem Content="Originário"/><ComboBoxItem Content="Transferido"/><ComboBoxItem Content="Provisório"/>
+                                                                        </ComboBox>
+                                                                    </Grid>
+                                                                </TabItem>
+                                                        <TabItem Header="Endereços">
+                                                            <Grid Margin="8">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="2*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="1.5*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                    <RowDefinition Height="Auto"/>
+                                                                </Grid.RowDefinitions>
 
-                                                    <TextBlock Text="Município Código" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center"/>
-        <TextBox x:Name="TxtContadorMunicipioCodigo" Grid.Row="3" Grid.Column="1" Margin="4" MaxLength="7" PreviewTextInput="NumericOnly_PreviewTextInput" IsReadOnly="True"/>
-                                                    <TextBlock Text="Município Nome" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center"/>
-                                                    <Grid Grid.Row="3" Grid.Column="3" Margin="4">
+                                                                <TextBlock Text="Celular" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtContadorCelular" Grid.Row="0" Grid.Column="1" Margin="4" MaxLength="11" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="Telefone_TextChanged" ToolTip="DDD+Número (somente dígitos)" IsReadOnly="True"/>
+                                                                <TextBlock Text="CEP" Grid.Row="0" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtContadorCEP" Grid.Row="0" Grid.Column="3" Margin="4" MaxLength="8" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="CEP_TextChanged" ToolTip="Somente dígitos (8)" IsReadOnly="True"/>
+
+                                                                <TextBlock Text="Logradouro" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtContadorLogradouro" Grid.Row="1" Grid.Column="1" Margin="4" IsReadOnly="True"/>
+                                                                <TextBlock Text="Número" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtContadorNumero" Grid.Row="1" Grid.Column="3" Margin="4" MaxLength="6" PreviewTextInput="NumericOnly_PreviewTextInput" IsReadOnly="True"/>
+
+                                                                <TextBlock Text="Complemento" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtContadorComplemento" Grid.Row="2" Grid.Column="1" Margin="4" IsReadOnly="True"/>
+                                                                <TextBlock Text="Bairro" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtContadorBairro" Grid.Row="2" Grid.Column="3" Margin="4" IsReadOnly="True"/>
+
+                                                                <TextBlock Text="Município Código" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtContadorMunicipioCodigo" Grid.Row="3" Grid.Column="1" Margin="4" MaxLength="7" PreviewTextInput="NumericOnly_PreviewTextInput" IsReadOnly="True"/>
+                                                                <TextBlock Text="Município Nome" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                <Grid Grid.Row="3" Grid.Column="3" Margin="4">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBox x:Name="TxtContadorMunicipioNome" Grid.Column="0" HorizontalAlignment="Stretch" IsReadOnly="True"/>
+                                                                    <Button Grid.Column="1" Content="Buscar..." Margin="8,0,0,0" IsEnabled="False"/>
+                                                                </Grid>
+
+                                                                <TextBlock Text="UF" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                <ComboBox x:Name="TxtContadorUF" Grid.Row="4" Grid.Column="1" Margin="4" IsEditable="False" SelectedValuePath="Content" IsEnabled="False">
+                                                                    <ComboBoxItem Content="AC"/><ComboBoxItem Content="AL"/><ComboBoxItem Content="AP"/><ComboBoxItem Content="AM"/>
+                                                                    <ComboBoxItem Content="BA"/><ComboBoxItem Content="CE"/><ComboBoxItem Content="DF"/><ComboBoxItem Content="ES"/>
+                                                                    <ComboBoxItem Content="GO"/><ComboBoxItem Content="MA"/><ComboBoxItem Content="MT"/><ComboBoxItem Content="MS"/>
+                                                                    <ComboBoxItem Content="MG"/><ComboBoxItem Content="PA"/><ComboBoxItem Content="PB"/><ComboBoxItem Content="PR"/>
+                                                                    <ComboBoxItem Content="PE"/><ComboBoxItem Content="PI"/><ComboBoxItem Content="RJ"/><ComboBoxItem Content="RN"/>
+                                                                    <ComboBoxItem Content="RS"/><ComboBoxItem Content="RO"/><ComboBoxItem Content="RR"/><ComboBoxItem Content="SC"/>
+                                                                    <ComboBoxItem Content="SP"/><ComboBoxItem Content="SE"/><ComboBoxItem Content="TO"/>
+                                                                </ComboBox>
+                                                            </Grid>
+                                                        </TabItem>
+                                                    </TabControl>
+                                                </TabItem>
+                                                <TabItem x:Name="TabEmpresaContabil" Header="Empresa Contábil" Visibility="Visible">
+                                                    <Grid Margin="8">
                                                         <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="2.5*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="2*"/>
                                                         </Grid.ColumnDefinitions>
-        <TextBox x:Name="TxtContadorMunicipioNome" Grid.Column="0" HorizontalAlignment="Stretch" IsReadOnly="True"/>
-        <Button Grid.Column="1" Content="Buscar..." Margin="8,0,0,0" Click="SelectContadorMunicipio_Click" IsEnabled="False"/>
-                                                    </Grid>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="Auto"/>
+                                                            <RowDefinition Height="Auto"/>
+                                                        </Grid.RowDefinitions>
+                                                        <TabControl Margin="0">
+                                                    <TabItem Header="Dados">
+                                                        <Grid Margin="8">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="2*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="1.5*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="1.5*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                                <RowDefinition Height="Auto"/>
+                                                            </Grid.RowDefinitions>
+                                                                    <TextBlock Text="Empresa" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                    <TextBox x:Name="TxtEmpresaContabilNome" Grid.Row="0" Grid.Column="1" Margin="6" MinWidth="220" IsReadOnly="True"/>
+                                                                    <TextBlock Text="CNPJ" Grid.Row="0" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                    <TextBox x:Name="TxtEmpresaContabilCNPJ" Grid.Row="0" Grid.Column="3" Margin="6" MinWidth="180" MaxLength="14" PreviewTextInput="NumericOnly_PreviewTextInput" ToolTip="Somente dígitos (14)" IsReadOnly="True"/>
 
-                                                    <TextBlock Text="UF" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center"/>
-        <ComboBox x:Name="TxtContadorUF" Grid.Row="4" Grid.Column="1" Margin="4" IsEditable="False" SelectedValuePath="Content" IsEnabled="False">
-                                                        <ComboBoxItem Content="AC"/><ComboBoxItem Content="AL"/><ComboBoxItem Content="AP"/><ComboBoxItem Content="AM"/>
-                                                        <ComboBoxItem Content="BA"/><ComboBoxItem Content="CE"/><ComboBoxItem Content="DF"/><ComboBoxItem Content="ES"/>
-                                                        <ComboBoxItem Content="GO"/><ComboBoxItem Content="MA"/><ComboBoxItem Content="MT"/><ComboBoxItem Content="MS"/>
-                                                        <ComboBoxItem Content="MG"/><ComboBoxItem Content="PA"/><ComboBoxItem Content="PB"/><ComboBoxItem Content="PR"/>
-                                                        <ComboBoxItem Content="PE"/><ComboBoxItem Content="PI"/><ComboBoxItem Content="RJ"/><ComboBoxItem Content="RN"/>
-                                                        <ComboBoxItem Content="RS"/><ComboBoxItem Content="RO"/><ComboBoxItem Content="RR"/><ComboBoxItem Content="SC"/>
-                                                        <ComboBoxItem Content="SP"/><ComboBoxItem Content="SE"/><ComboBoxItem Content="TO"/>
-                                                    </ComboBox>
-                                                </Grid>
-                                            </GroupBox>
+                                                                    <TextBlock Text="Email" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                    <TextBox x:Name="TxtEmpresaContabilEmail" Grid.Row="1" Grid.Column="1" Margin="6" MinWidth="220" IsReadOnly="True"/>
+                                                                    <TextBlock Text="Telefone" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                    <TextBox x:Name="TxtEmpresaContabilTelefone" Grid.Row="1" Grid.Column="3" Margin="6" MinWidth="180" MaxLength="11" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="Telefone_TextChanged" ToolTip="DDD+Número (somente dígitos)" IsReadOnly="True"/>
+
+                                                                    <TextBlock Text="Estado (CRC)" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                    <ComboBox x:Name="CmbEmpresaContabilEstadoCRC" Grid.Row="2" Grid.Column="1" Margin="6" MinWidth="100" IsEditable="False" SelectedValuePath="Content" IsEnabled="False">
+                                                                        <ComboBoxItem Content="AC"/><ComboBoxItem Content="AL"/><ComboBoxItem Content="AP"/><ComboBoxItem Content="AM"/>
+                                                                        <ComboBoxItem Content="BA"/><ComboBoxItem Content="CE"/><ComboBoxItem Content="DF"/><ComboBoxItem Content="ES"/>
+                                                                        <ComboBoxItem Content="GO"/><ComboBoxItem Content="MA"/><ComboBoxItem Content="MT"/><ComboBoxItem Content="MS"/>
+                                                                        <ComboBoxItem Content="MG"/><ComboBoxItem Content="PA"/><ComboBoxItem Content="PB"/><ComboBoxItem Content="PR"/>
+                                                                        <ComboBoxItem Content="PE"/><ComboBoxItem Content="PI"/><ComboBoxItem Content="RJ"/><ComboBoxItem Content="RN"/>
+                                                                        <ComboBoxItem Content="RS"/><ComboBoxItem Content="RO"/><ComboBoxItem Content="RR"/><ComboBoxItem Content="SC"/>
+                                                                        <ComboBoxItem Content="SP"/><ComboBoxItem Content="SE"/><ComboBoxItem Content="TO"/>
+                                                                    </ComboBox>
+                                                                    <TextBlock Text="CRC" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                    <TextBox x:Name="TxtEmpresaContabilCRC" Grid.Row="2" Grid.Column="3" Margin="6" MinWidth="120" IsReadOnly="True"/>
+
+                                                                <TextBlock Text="Tipo CRC" Grid.Row="2" Grid.Column="4" VerticalAlignment="Center"/>
+                                                                <ComboBox x:Name="CmbEmpresaContabilCRCTipo" Grid.Row="2" Grid.Column="5" Margin="6" MinWidth="100" IsEditable="False" SelectedValuePath="Content" IsEnabled="False">
+                                                                    <ComboBoxItem Content="Originário"/><ComboBoxItem Content="Transferido"/><ComboBoxItem Content="Provisório"/>
+                                                                </ComboBox>
+                                                            </Grid>
+                                                        </TabItem>
+                                                        <TabItem Header="Endereços">
+                                                            <Grid Margin="8">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="3*"/>
+                                                                    <ColumnDefinition Width="Auto"/>
+                                                                    <ColumnDefinition Width="2*"/>
+                                                                </Grid.ColumnDefinitions>
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                    </Grid.RowDefinitions>
+
+                                                                <TextBlock Text="CEP" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtEmpresaContabilCEP" Grid.Row="0" Grid.Column="1" Margin="4" MinWidth="120" MaxLength="8" PreviewTextInput="NumericOnly_PreviewTextInput" TextChanged="CEP_TextChanged" ToolTip="Somente dígitos (8)" IsReadOnly="True"/>
+
+                                                                <TextBlock Text="Logradouro" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtEmpresaContabilLogradouro" Grid.Row="1" Grid.Column="1" Margin="4" MinWidth="260" IsReadOnly="True"/>
+                                                                <TextBlock Text="Número" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtEmpresaContabilNumero" Grid.Row="1" Grid.Column="3" Margin="4" MinWidth="100" MaxLength="6" PreviewTextInput="NumericOnly_PreviewTextInput" IsReadOnly="True"/>
+
+                                                                <TextBlock Text="Complemento" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtEmpresaContabilComplemento" Grid.Row="2" Grid.Column="1" Margin="4" MinWidth="200" IsReadOnly="True"/>
+                                                                <TextBlock Text="Bairro" Grid.Row="2" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                <TextBox x:Name="TxtEmpresaContabilBairro" Grid.Row="2" Grid.Column="3" Margin="4" MinWidth="180" IsReadOnly="True"/>
+
+                                                                    <TextBlock Text="Município Código" Grid.Row="3" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                    <TextBox x:Name="TxtEmpresaContabilMunicipioCodigo" Grid.Row="3" Grid.Column="1" Margin="4" MaxLength="7" PreviewTextInput="NumericOnly_PreviewTextInput" IsReadOnly="True"/>
+                                                                    <TextBlock Text="Município Nome" Grid.Row="3" Grid.Column="2" VerticalAlignment="Center"/>
+                                                                    <Grid Grid.Row="3" Grid.Column="3" Margin="4">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="*"/>
+                                                                            <ColumnDefinition Width="Auto"/>
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <TextBox x:Name="TxtEmpresaContabilMunicipioNome" Grid.Column="0" HorizontalAlignment="Stretch" MinWidth="220" IsReadOnly="True"/>
+                                                                        <Button Grid.Column="1" Content="Buscar..." Margin="8,0,0,0" IsEnabled="False"/>
+                                                                    </Grid>
+
+                                                                    <TextBlock Text="UF" Grid.Row="4" Grid.Column="0" VerticalAlignment="Center"/>
+                                                                    <ComboBox x:Name="TxtEmpresaContabilUF" Grid.Row="4" Grid.Column="1" Margin="4" IsEditable="False" SelectedValuePath="Content" IsEnabled="False">
+                                                                        <ComboBoxItem Content="AC"/><ComboBoxItem Content="AL"/><ComboBoxItem Content="AP"/><ComboBoxItem Content="AM"/>
+                                                                        <ComboBoxItem Content="BA"/><ComboBoxItem Content="CE"/><ComboBoxItem Content="DF"/><ComboBoxItem Content="ES"/>
+                                                                        <ComboBoxItem Content="GO"/><ComboBoxItem Content="MA"/><ComboBoxItem Content="MT"/><ComboBoxItem Content="MS"/>
+                                                                        <ComboBoxItem Content="MG"/><ComboBoxItem Content="PA"/><ComboBoxItem Content="PB"/><ComboBoxItem Content="PR"/>
+                                                                        <ComboBoxItem Content="PE"/><ComboBoxItem Content="PI"/><ComboBoxItem Content="RJ"/><ComboBoxItem Content="RN"/>
+                                                                        <ComboBoxItem Content="RS"/><ComboBoxItem Content="RO"/><ComboBoxItem Content="RR"/><ComboBoxItem Content="SC"/>
+                                                                        <ComboBoxItem Content="SP"/><ComboBoxItem Content="SE"/><ComboBoxItem Content="TO"/>
+                                                                    </ComboBox>
+                                                                </Grid>
+                                                            </TabItem>
+                                                        </TabControl>
+                                                    </Grid>
+                                                </TabItem>
+                                            </TabControl>
                                         </StackPanel>
-                                    </ScrollViewer>
+                                        </ScrollViewer>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="8" DockPanel.Dock="Bottom">
     <Button Content="Salvar Contador" Click="SaveContador_Click" IsEnabled="False"/>
                                     </StackPanel>

@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace PDV_MedusaX8
 {
@@ -10,10 +12,51 @@ namespace PDV_MedusaX8
         public string ResultName { get; private set; } = string.Empty;
         public string ResultCPF { get; private set; } = string.Empty;
 
+        private bool _userInteracted = false;
+        private DispatcherTimer _autoCloseTimer = new DispatcherTimer();
+
         public ConsumidorQuickWindow()
         {
             InitializeComponent();
             Loaded += (s, e) => { TxtNome.Focus(); };
+            PreviewKeyDown += ConsumidorQuickWindow_PreviewKeyDown;
+
+            _autoCloseTimer.Interval = TimeSpan.FromSeconds(2);
+            _autoCloseTimer.Tick += AutoCloseTimer_Tick;
+            _autoCloseTimer.Start();
+
+            TxtNome.TextChanged += AnyInteraction;
+            TxtCPF.TextChanged += AnyInteraction;
+            PreviewMouseDown += AnyInteraction;
+        }
+
+        private void ConsumidorQuickWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                this.DialogResult = false;
+                this.Close();
+                e.Handled = true;
+            }
+            else
+            {
+                _userInteracted = true;
+            }
+        }
+
+        private void AnyInteraction(object? sender, EventArgs e)
+        {
+            _userInteracted = true;
+        }
+
+        private void AutoCloseTimer_Tick(object? sender, EventArgs e)
+        {
+            if (!_userInteracted && string.IsNullOrWhiteSpace(TxtNome.Text) && string.IsNullOrWhiteSpace(TxtCPF.Text))
+            {
+                _autoCloseTimer.Stop();
+                this.DialogResult = false;
+                this.Close();
+            }
         }
 
         private void BtnSalvar_Click(object sender, RoutedEventArgs e)

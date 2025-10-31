@@ -13,6 +13,17 @@ namespace PDV_MedusaX8
         // Informações adicionais de fechamento
         public string? ClosedByUser { get; set; }
         public string? SupervisorUser { get; set; }
+        // Totais e dados formatados para impressão (evita dependência de controles inexistentes)
+        private string _periodo = string.Empty;
+        private string _totalVendasFmt = string.Empty;
+        private string _qtdVendasFmt = string.Empty;
+        private string _totalNFCeFmt = string.Empty;
+        private string _qtdNFCeFmt = string.Empty;
+        private string _totalSuprFmt = string.Empty;
+        private string _totalAberturaFmt = string.Empty;
+        private decimal _totalSang = 0m;
+        private string _totalSangFmt = string.Empty;
+        private List<PagamentoResumo> _pagamentos = new List<PagamentoResumo>();
 
         public FechamentoCaixaWindow()
         {
@@ -28,7 +39,9 @@ namespace PDV_MedusaX8
         {
             public string Meio { get; set; } = string.Empty;
             public decimal Total { get; set; }
+            public int Quantidade { get; set; }
             public string TotalFmt => Total.ToString("C", CultureInfo.CurrentCulture);
+            public string QuantidadeFmt => Quantidade.ToString(CultureInfo.InvariantCulture);
         }
 
         private void FechamentoCaixaWindow_Loaded(object sender, RoutedEventArgs e)
@@ -36,21 +49,8 @@ namespace PDV_MedusaX8
             try
             {
                 // Carregar configuração padrão de conferência às cegas
-                try
-                {
-                    using var connCfg = new SqliteConnection(GetConnectionString());
-                    connCfg.Open();
-                    using var cmdCfg = connCfg.CreateCommand();
-                    cmdCfg.CommandText = "CREATE TABLE IF NOT EXISTS Settings (Key TEXT PRIMARY KEY, Value TEXT);";
-                    cmdCfg.ExecuteNonQuery();
-                    using var cmdGet = connCfg.CreateCommand();
-                    cmdGet.CommandText = "SELECT Value FROM Settings WHERE Key='BlindCashClosureEnabled' LIMIT 1";
-                    var v = cmdGet.ExecuteScalar();
-                    bool enabled = v != null && v != DBNull.Value && (string.Equals(Convert.ToString(v), "1") || string.Equals(Convert.ToString(v), "true", StringComparison.OrdinalIgnoreCase));
-                    CbBlindMode.IsChecked = enabled;
-                    ApplyBlindMode(enabled);
-                }
-                catch { }
+                // A configuração agora é carregada via SettingsWindow.EnableBlindCashClosure
+
 
                 // Exibir painel de supervisor se exigido
                 if (this.Owner is MainWindow mw)
@@ -58,7 +58,7 @@ namespace PDV_MedusaX8
                     SupervisorPanel.Visibility = mw.RequiresSupervisorForClosingCash ? Visibility.Visible : Visibility.Collapsed;
                 }
 
-                TxtPeriodo.Text = $"{DateTime.Today:dd/MM/yyyy}";
+                _periodo = $"{DateTime.Today:dd/MM/yyyy}";
 
                 using var conn = new SqliteConnection(GetConnectionString());
                 conn.Open();
@@ -75,8 +75,8 @@ namespace PDV_MedusaX8
                         qtdVendas = r.IsDBNull(1) ? 0 : r.GetInt32(1);
                     }
                 }
-                TxtTotalVendas.Text = totalVendas.ToString("C", CultureInfo.CurrentCulture);
-                TxtQtdVendas.Text = qtdVendas.ToString(CultureInfo.InvariantCulture);
+                _totalVendasFmt = totalVendas.ToString("C", CultureInfo.CurrentCulture);
+                _qtdVendasFmt = qtdVendas.ToString(CultureInfo.InvariantCulture);
 
                 // NFC-e: total e quantidade do dia
                 decimal totalNFCe = 0m; int qtdNFCe = 0;
@@ -91,8 +91,8 @@ namespace PDV_MedusaX8
                         qtdNFCe = r.IsDBNull(1) ? 0 : r.GetInt32(1);
                     }
                 }
-                TxtTotalNFCe.Text = totalNFCe.ToString("C", CultureInfo.CurrentCulture);
-                TxtQtdNFCe.Text = qtdNFCe.ToString(CultureInfo.InvariantCulture);
+                _totalNFCeFmt = totalNFCe.ToString("C", CultureInfo.CurrentCulture);
+                _qtdNFCeFmt = qtdNFCe.ToString(CultureInfo.InvariantCulture);
 
                 // Movimentos: abertura, suprimento e sangria do dia
                 decimal totalAbertura = 0m, totalSupr = 0m, totalSang = 0m;
@@ -114,24 +114,125 @@ namespace PDV_MedusaX8
                     var v = cmd.ExecuteScalar();
                     if (v != null && v != DBNull.Value) totalSang = Convert.ToDecimal(v);
                 }
-                TxtTotalAbertura.Text = totalAbertura.ToString("C", CultureInfo.CurrentCulture);
-                TxtTotalSuprimento.Text = totalSupr.ToString("C", CultureInfo.CurrentCulture);
-                TxtTotalSangria.Text = totalSang.ToString("C", CultureInfo.CurrentCulture);
+                _totalAberturaFmt = totalAbertura.ToString("C", CultureInfo.CurrentCulture);
+                _totalSuprFmt = totalSupr.ToString("C", CultureInfo.CurrentCulture);
+                _totalSang = totalSang;
+                _totalSangFmt = totalSang.ToString("C", CultureInfo.CurrentCulture);
+    
 
                 // NFC-e: pagamentos por tPag
                 var lista = new List<PagamentoResumo>();
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = @"SELECT p.tPag, COALESCE(SUM(p.vPag),0) FROM NFCePagamento p JOIN NFCe n ON n.Id = p.NFCeId WHERE DATE(n.DataEmissao) = DATE('now') GROUP BY p.tPag";
+                    cmd.CommandText = @"SELECT p.tPag, COALESCE(SUM(p.vPag),0), COUNT(p.Id) FROM NFCePagamento p JOIN NFCe n ON n.Id = p.NFCeId WHERE DATE(n.DataEmissao) = DATE('now') GROUP BY p.tPag";
                     using var r = cmd.ExecuteReader();
                     while (r.Read())
                     {
                         var code = r.IsDBNull(0) ? string.Empty : r.GetString(0);
                         var total = r.IsDBNull(1) ? 0m : Convert.ToDecimal(r.GetDouble(1));
-                        lista.Add(new PagamentoResumo { Meio = MapTPag(code), Total = total });
+                        var quantidade = r.IsDBNull(2) ? 0 : r.GetInt32(2);
+                        lista.Add(new PagamentoResumo { Meio = MapTPag(code), Total = total, Quantidade = quantidade });
                     }
                 }
-                LstPagamentosNFCe.ItemsSource = lista.OrderBy(x => x.Meio).ToList();
+                _pagamentos = lista.OrderBy(x => x.Meio).ToList();
+
+                // Preencher rótulos do resumo
+                TxtPeriodoLabel.Text = _periodo;
+                TxtTotalVendasLabel.Text = _totalVendasFmt;
+                TxtQtdVendasLabel.Text = _qtdVendasFmt;
+                TxtTotalNFCeLabel.Text = _totalNFCeFmt;
+                TxtQtdNFCeLabel.Text = _qtdNFCeFmt;
+                TxtTotalAberturaLabel.Text = _totalAberturaFmt;
+                TxtTotalSuprimentoLabel.Text = _totalSuprFmt;
+                TxtTotalSangriaLabel.Text = _totalSangFmt;
+                // Preencher relação de formas de pagamento
+                try
+                {
+                    ResumoPagamentosPanel.Children.Clear();
+                    
+                    // Adicionar cabeçalho
+                    var headerRow = new System.Windows.Controls.Grid();
+                    headerRow.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new System.Windows.GridLength(1, System.Windows.GridUnitType.Star) });
+                    headerRow.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = System.Windows.GridLength.Auto });
+                    headerRow.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = System.Windows.GridLength.Auto });
+                    
+                    var headerMeio = new System.Windows.Controls.TextBlock { Text = "Forma de Pagamento", FontWeight = System.Windows.FontWeights.Bold };
+                    var headerQtd = new System.Windows.Controls.TextBlock { Text = "Qtd", FontWeight = System.Windows.FontWeights.Bold, Margin = new Thickness(10,0,10,0) };
+                    var headerTotal = new System.Windows.Controls.TextBlock { Text = "Total", FontWeight = System.Windows.FontWeights.Bold };
+                    
+                    System.Windows.Controls.Grid.SetColumn(headerMeio, 0);
+                    System.Windows.Controls.Grid.SetColumn(headerQtd, 1);
+                    System.Windows.Controls.Grid.SetColumn(headerTotal, 2);
+                    
+                    headerRow.Children.Add(headerMeio);
+                    headerRow.Children.Add(headerQtd);
+                    headerRow.Children.Add(headerTotal);
+                    
+                    ResumoPagamentosPanel.Children.Add(headerRow);
+                    ResumoPagamentosPanel.Children.Add(new System.Windows.Controls.Separator { Margin = new Thickness(0, 5, 0, 5) });
+                    
+                    // Adicionar itens
+                    foreach (var p in _pagamentos)
+                    {
+                        var row = new System.Windows.Controls.Grid();
+                        row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = new System.Windows.GridLength(1, System.Windows.GridUnitType.Star) });
+                        row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = System.Windows.GridLength.Auto });
+                        row.ColumnDefinitions.Add(new System.Windows.Controls.ColumnDefinition { Width = System.Windows.GridLength.Auto });
+                        
+                        var tMeio = new System.Windows.Controls.TextBlock { Text = p.Meio };
+                        var tQtd = new System.Windows.Controls.TextBlock { Text = p.QuantidadeFmt, Margin = new Thickness(10,0,10,0), HorizontalAlignment = System.Windows.HorizontalAlignment.Right };
+                        var tTotal = new System.Windows.Controls.TextBlock { Text = p.TotalFmt, FontWeight = System.Windows.FontWeights.Bold, HorizontalAlignment = System.Windows.HorizontalAlignment.Right };
+                        
+                        System.Windows.Controls.Grid.SetColumn(tMeio, 0);
+                        System.Windows.Controls.Grid.SetColumn(tQtd, 1);
+                        System.Windows.Controls.Grid.SetColumn(tTotal, 2);
+                        
+                        row.Children.Add(tMeio);
+                        row.Children.Add(tQtd);
+                        row.Children.Add(tTotal);
+                        
+                        ResumoPagamentosPanel.Children.Add(row);
+                    }
+                }
+                catch { /* ignore visual fill errors */ }
+
+                // Alternar visibilidade conforme checkbox "fechar caixa cego" (ler diretamente do banco para refletir estado atual)
+                bool blindEnabled = false;
+                try
+                {
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = "SELECT Value FROM Settings WHERE Key='EnableBlindCashClosure' LIMIT 1";
+                    var v = cmd.ExecuteScalar();
+                    if (v != null && v != DBNull.Value)
+                    {
+                        var s = v.ToString() ?? string.Empty;
+                        blindEnabled = s == "1" || s.Equals("true", StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+                catch { blindEnabled = SettingsWindow.EnableBlindCashClosure; }
+
+                if (blindEnabled)
+                {
+                    // Oculta completamente o resumo e exibe contagem física
+                    ResumoHeader.Visibility = Visibility.Collapsed;
+                    ResumoPanel.Visibility = Visibility.Collapsed;
+                    ContagemPanel.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    // Exibe resumo e oculta completamente contagem física
+                    ResumoHeader.Visibility = Visibility.Visible;
+                    ResumoPanel.Visibility = Visibility.Visible;
+                    ContagemPanel.Visibility = Visibility.Collapsed;
+                    
+                    // Quando a opção "fechar caixa às cegas" estiver desabilitada, 
+                    // garantimos que a consolidação de pagamentos seja exibida
+                    if (_pagamentos.Count > 0)
+                    {
+                        // Já implementado anteriormente - a lista consolidada é exibida
+                        // com nome da forma de pagamento, valor total e quantidade de transações
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -139,66 +240,9 @@ namespace PDV_MedusaX8
             }
         }
 
-        private void ApplyBlindMode(bool enabled)
-        {
-            SummaryGrid.Visibility = enabled ? Visibility.Collapsed : Visibility.Visible;
-            BlindPanel.Visibility = enabled ? Visibility.Visible : Visibility.Collapsed;
-            if (enabled)
-            {
-                try
-                {
-                    // Limpar quaisquer valores visíveis do resumo para mitigar inspeção visual
-                    TxtTotalVendas.Text = "";
-                    TxtQtdVendas.Text = "";
-                    TxtTotalNFCe.Text = "";
-                    TxtQtdNFCe.Text = "";
-                    LstPagamentosNFCe.ItemsSource = null;
-                }
-                catch { }
-            }
-        }
 
-        private void CbBlindMode_Checked(object sender, RoutedEventArgs e)
-        {
-            ApplyBlindMode(true);
-            // Persistir preferência
-            try
-            {
-                using var conn = new SqliteConnection(GetConnectionString());
-                conn.Open();
-                using var cmdUp = conn.CreateCommand();
-                cmdUp.CommandText = "UPDATE Settings SET Value='1' WHERE Key='BlindCashClosureEnabled'";
-                int rows = cmdUp.ExecuteNonQuery();
-                if (rows == 0)
-                {
-                    using var cmdIns = conn.CreateCommand();
-                    cmdIns.CommandText = "INSERT INTO Settings (Key, Value) VALUES ('BlindCashClosureEnabled','1')";
-                    cmdIns.ExecuteNonQuery();
-                }
-            }
-            catch { }
-        }
 
-        private void CbBlindMode_Unchecked(object sender, RoutedEventArgs e)
-        {
-            ApplyBlindMode(false);
-            // Persistir preferência
-            try
-            {
-                using var conn = new SqliteConnection(GetConnectionString());
-                conn.Open();
-                using var cmdUp = conn.CreateCommand();
-                cmdUp.CommandText = "UPDATE Settings SET Value='0' WHERE Key='BlindCashClosureEnabled'";
-                int rows = cmdUp.ExecuteNonQuery();
-                if (rows == 0)
-                {
-                    using var cmdIns = conn.CreateCommand();
-                    cmdIns.CommandText = "INSERT INTO Settings (Key, Value) VALUES ('BlindCashClosureEnabled','0')";
-                    cmdIns.ExecuteNonQuery();
-                }
-            }
-            catch { }
-        }
+
 
         private string MapTPag(string code)
         {
@@ -219,18 +263,17 @@ namespace PDV_MedusaX8
         {
             try
             {
-                // Coleta dados da tela
-                var periodo = TxtPeriodo.Text;
-                var totalVendas = TxtTotalVendas.Text;
-                var qtdVendas = TxtQtdVendas.Text;
-                var totalNFCe = TxtTotalNFCe.Text;
-                var qtdNFCe = TxtQtdNFCe.Text;
-                var totalSupr = TxtTotalSuprimento.Text;
-                var totalSang = TxtTotalSangria.Text;
-                var totalAbertura = TxtTotalAbertura.Text;
-                var pagamentos = LstPagamentosNFCe.Items.Cast<PagamentoResumo>().Select(p => (p.Meio, p.Total)).ToList();
+                // Usa dados já calculados (sem depender de controles não definidos no XAML)
+                var periodo = _periodo;
+                var totalVendas = _totalVendasFmt;
+                var qtdVendas = _qtdVendasFmt;
+                var totalNFCe = _totalNFCeFmt;
+                var qtdNFCe = _qtdNFCeFmt;
+                var totalSupr = _totalSuprFmt;
+                var totalAbertura = _totalAberturaFmt;
+                var pagamentos = _pagamentos.Select(p => (p.Meio, p.Total)).ToList();
 
-                PrintingService.PrintFechamentoCaixa(periodo, totalVendas, qtdVendas, totalNFCe, qtdNFCe, totalAbertura, totalSupr, totalSang, pagamentos);
+                PrintingService.PrintFechamentoCaixa(periodo, totalVendas, qtdVendas, totalNFCe, qtdNFCe, totalAbertura, totalSupr, _totalSangFmt, pagamentos);
             }
             catch (Exception ex)
             {
@@ -308,7 +351,7 @@ namespace PDV_MedusaX8
                             CountedCardCredit REAL,
                             CountedCheques REAL,
                             CountedPix REAL,
-                            BlindMode INTEGER,
+        
                             Operator TEXT,
                             Observations TEXT,
                             Signature TEXT,
@@ -406,7 +449,7 @@ namespace PDV_MedusaX8
                 AddClosureColIfMissing("CountedCardCredit", "REAL");
                 AddClosureColIfMissing("CountedCheques", "REAL");
                 AddClosureColIfMissing("CountedPix", "REAL");
-                AddClosureColIfMissing("BlindMode", "INTEGER");
+                
                 AddClosureColIfMissing("Operator", "TEXT");
                 AddClosureColIfMissing("Observations", "TEXT");
                 AddClosureColIfMissing("Signature", "TEXT");
@@ -440,23 +483,34 @@ namespace PDV_MedusaX8
                     }
                     if (cashNumber == 0) cashNumber = 1;
                 }
-                // Preparar dados de conferência às cegas
-                bool blind = CbBlindMode.IsChecked == true;
                 decimal countedCash = 0m, countedDebit = 0m, countedCredit = 0m, countedCheques = 0m, countedPix = 0m;
                 string observations = string.Empty;
-                if (blind)
+                // Preparar dados de conferência às cegas
+
+                if (!SettingsWindow.EnableBlindCashClosure)
                 {
-                    countedCash = TryParseDecimal(TxtBlindCash.Text);
-                    countedDebit = TryParseDecimal(TxtBlindCardDebit.Text);
-                    countedCredit = TryParseDecimal(TxtBlindCardCredit.Text);
-                    countedCheques = TryParseDecimal(TxtBlindCheques.Text);
-                    countedPix = TryParseDecimal(TxtBlindPix.Text);
-                    observations = TxtBlindObs.Text ?? string.Empty;
+                    // Caixa cego desativado: não executar contagem física
+                    countedCash = 0m;
+                    countedDebit = 0m;
+                    countedCredit = 0m;
+                    countedCheques = 0m;
+                    countedPix = 0m;
+                    observations = string.Empty;
+                }
+                else
+                {
+                    // Caixa cego ativado: ler valores digitados na UI de contagem física
+                    countedCash = TryParseDecimal(TxtTotalDinheiro.Text);
+                    countedDebit = TryParseDecimal(TxtTotalDebito.Text);
+                    countedCredit = TryParseDecimal(TxtTotalCredito.Text);
+                    countedCheques = TryParseDecimal(TxtTotalCheques.Text);
+                    countedPix = TryParseDecimal(TxtTotalPix.Text);
+                    observations = TxtObservacoes.Text ?? string.Empty;
                 }
 
                 // Calcular divergência (apenas caixa físico vs saldo de caixa do sistema)
                 decimal divergence = 0m; int requiresReview = 0;
-                if (blind)
+                if (SettingsWindow.EnableBlindCashClosure)
                 {
                     try
                     {
@@ -474,7 +528,7 @@ namespace PDV_MedusaX8
 
                 // Assinatura digital (hash SHA-256 do conteúdo)
                 string signature = string.Empty;
-                if (blind)
+                if (SettingsWindow.EnableBlindCashClosure)
                 {
                     var receipt = $"FechamentoCego|Data={DateTime.Now:O}|Operador={SessionManager.CurrentUser}|Dinheiro={countedCash}|Debito={countedDebit}|Credito={countedCredit}|Cheques={countedCheques}|PIX={countedPix}|Obs={observations}";
                     using var sha = System.Security.Cryptography.SHA256.Create();
@@ -485,16 +539,23 @@ namespace PDV_MedusaX8
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"INSERT INTO CashClosures (PeriodDate, SalesTotal, SalesCount, NFCeTotal, NFCeCount, SuprimentoTotal, SangriaTotal, CashRegisterNumber, SessionId, ClosedByUser, SupervisorUser, ClosedAt,
-                                        CountedCash, CountedCardDebit, CountedCardCredit, CountedCheques, CountedPix, BlindMode, Operator, Observations, Signature, RequiresSupervisorReview, DivergenceAmount)
+                                        CountedCash, CountedCardDebit, CountedCardCredit, CountedCheques, CountedPix, Operator, Observations, Signature, RequiresSupervisorReview, DivergenceAmount)
                                         VALUES ($period, $salesTot, $salesCnt, $nfTot, $nfCnt, $supTot, $sgTot, $cash, $sid, $closedBy, $supervisor, CURRENT_TIMESTAMP,
-                                        $ccash, $cdeb, $ccred, $cchq, $cpix, $blind, $op, $obs, $sig, $rev, $div)";
+                                        $ccash, $cdeb, $ccred, $cchq, $cpix, $op, $obs, $sig, $rev, $div)";
                     cmd.Parameters.AddWithValue("$period", DateTime.Today.ToString("yyyy-MM-dd"));
-                    cmd.Parameters.AddWithValue("$salesTot", ParseCurrency(TxtTotalVendas.Text));
-                    cmd.Parameters.AddWithValue("$salesCnt", int.TryParse(TxtQtdVendas.Text, out var sc) ? sc : 0);
-                    cmd.Parameters.AddWithValue("$nfTot", ParseCurrency(TxtTotalNFCe.Text));
-                    cmd.Parameters.AddWithValue("$nfCnt", int.TryParse(TxtQtdNFCe.Text, out var nc) ? nc : 0);
-                    cmd.Parameters.AddWithValue("$supTot", ParseCurrency(TxtTotalSuprimento.Text));
-                    cmd.Parameters.AddWithValue("$sgTot", ParseCurrency(TxtTotalSangria.Text));
+                    // Totais e contadores do período (derivados dos campos pré-formatados)
+                    cmd.Parameters.AddWithValue("$salesTot", ParseCurrency(_totalVendasFmt));
+                    cmd.Parameters.AddWithValue("$salesCnt", int.TryParse(_qtdVendasFmt, out var _sc) ? _sc : 0);
+                    cmd.Parameters.AddWithValue("$nfTot", ParseCurrency(_totalNFCeFmt));
+                    cmd.Parameters.AddWithValue("$nfCnt", int.TryParse(_qtdNFCeFmt, out var _nc) ? _nc : 0);
+                    cmd.Parameters.AddWithValue("$supTot", ParseCurrency(_totalSuprFmt));
+                    cmd.Parameters.AddWithValue("$sgTot", (double)_totalSang);
+
+
+
+
+
+
                     cmd.Parameters.AddWithValue("$cash", cashNumber);
                     cmd.Parameters.AddWithValue("$sid", (object?)sessionId ?? DBNull.Value);
                     cmd.Parameters.AddWithValue("$closedBy", (object?)(ClosedByUser ?? SessionManager.CurrentUser ?? ""));
@@ -504,11 +565,11 @@ namespace PDV_MedusaX8
                     cmd.Parameters.AddWithValue("$ccred", (double)countedCredit);
                     cmd.Parameters.AddWithValue("$cchq", (double)countedCheques);
                     cmd.Parameters.AddWithValue("$cpix", (double)countedPix);
-                    cmd.Parameters.AddWithValue("$blind", blind ? 1 : 0);
+
                     cmd.Parameters.AddWithValue("$op", SessionManager.CurrentUser ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("$obs", string.IsNullOrWhiteSpace(observations) ? (object)DBNull.Value : observations);
                     cmd.Parameters.AddWithValue("$sig", string.IsNullOrWhiteSpace(signature) ? (object)DBNull.Value : signature);
-                    cmd.Parameters.AddWithValue("$rev", blind ? requiresReview : 0);
+                    cmd.Parameters.AddWithValue("$rev", requiresReview);
                     cmd.Parameters.AddWithValue("$div", (double)divergence);
                     cmd.ExecuteNonQuery();
                 }
@@ -542,19 +603,6 @@ namespace PDV_MedusaX8
         private void Monetary_LostFocus(object? sender, RoutedEventArgs e)
         {
             // Formatar campos monetários quando perder o foco
-            void FormatBox(System.Windows.Controls.TextBox? tb)
-            {
-                if (tb == null) return;
-                if (decimal.TryParse(tb.Text, NumberStyles.Any, CultureInfo.CurrentCulture, out var d))
-                {
-                    tb.Text = d.ToString("N2", CultureInfo.CurrentCulture);
-                }
-            }
-            FormatBox(TxtBlindCash);
-            FormatBox(TxtBlindCardDebit);
-            FormatBox(TxtBlindCardCredit);
-            FormatBox(TxtBlindCheques);
-            FormatBox(TxtBlindPix);
         }
 
         private decimal TryParseDecimal(string? text)

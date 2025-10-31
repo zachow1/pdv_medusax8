@@ -20,8 +20,9 @@ namespace PDV_MedusaX8.Services
 
         public static string GetDbPath()
         {
-            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var dbPath = Path.Combine(baseDir, DatabaseFileName);
+            var folder = GetSecureDbFolder();
+            try { if (!Directory.Exists(folder)) Directory.CreateDirectory(folder); } catch { }
+            var dbPath = Path.Combine(folder, DatabaseFileName);
             return dbPath;
         }
 
@@ -35,10 +36,31 @@ namespace PDV_MedusaX8.Services
         {
             try
             {
-                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                var dbPath = Path.Combine(baseDir, DatabaseFileName);
+                var secureFolder = GetSecureDbFolder();
+                if (!Directory.Exists(secureFolder)) Directory.CreateDirectory(secureFolder);
+                var secureDbPath = Path.Combine(secureFolder, DatabaseFileName);
+                var oldDbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DatabaseFileName);
 
-                if (!File.Exists(dbPath))
+                if (!File.Exists(secureDbPath))
+                {
+                    // Migrar banco antigo, se existir na pasta base da aplicação
+                    if (File.Exists(oldDbPath))
+                    {
+                        try { File.Copy(oldDbPath, secureDbPath, overwrite: false); }
+                        catch { /* ignore copy errors */ }
+                    }
+
+                    // Fallback: se existir um arquivo 'config.db' usado em dev, migrar
+                    var altDbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.db");
+                    if (!File.Exists(secureDbPath) && File.Exists(altDbPath))
+                    {
+                        try { File.Copy(altDbPath, secureDbPath, overwrite: false); }
+                        catch { /* ignore copy errors */ }
+                    }
+                }
+
+                // Criar DB se ainda não existir
+                if (!File.Exists(secureDbPath))
                 {
                     using var conn = new SqliteConnection(GetConnectionString());
                     conn.Open();
@@ -47,7 +69,7 @@ namespace PDV_MedusaX8.Services
                     cmd.ExecuteNonQuery();
                 }
 
-                TryHardenPermissions(baseDir, dbPath);
+                TryHardenPermissions(secureFolder, secureDbPath);
             }
             catch
             {

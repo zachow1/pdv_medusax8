@@ -4,14 +4,15 @@ namespace PDV_MedusaX8.Services
 {
     public static class SessionManager
     {
-        private static string _currentUser;
+        private static string? _currentUser;
         private static DateTime _loginTime;
         private static bool _isLoggedIn;
+        private static bool _nfceEditEnabled;
 
         /// <summary>
         /// Usuário atualmente logado no sistema
         /// </summary>
-        public static string CurrentUser 
+        public static string? CurrentUser 
         { 
             get => _currentUser; 
             private set => _currentUser = value; 
@@ -33,6 +34,15 @@ namespace PDV_MedusaX8.Services
         { 
             get => _isLoggedIn; 
             private set => _isLoggedIn = value; 
+        }
+
+        /// <summary>
+        /// Editar configurações da NFC-e habilitado na sessão atual
+        /// </summary>
+        public static bool NFCeEditEnabled
+        {
+            get => _nfceEditEnabled;
+            set => _nfceEditEnabled = value;
         }
 
         /// <summary>
@@ -62,6 +72,7 @@ namespace PDV_MedusaX8.Services
             CurrentUser = null;
             LoginTime = default;
             IsLoggedIn = false;
+            NFCeEditEnabled = false;
         }
 
         /// <summary>

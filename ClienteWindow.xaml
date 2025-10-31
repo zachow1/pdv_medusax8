@@ -31,57 +31,57 @@
                         </Grid.RowDefinitions>
                         
                         <TextBlock Text="Nome" Grid.Row="0" Grid.Column="0"/>
-                        <TextBox x:Name="TxtNome" Grid.Row="0" Grid.Column="0" Margin="0,22,8,8"/>
+                        <TextBox x:Name="TxtNome" Grid.Row="0" Grid.Column="0" Margin="0,8,8,8" Style="{StaticResource AppInputTextBox}"/>
 
                         <TextBlock Text="Nome Fantasia" Grid.Row="0" Grid.Column="2"/>
-                        <TextBox x:Name="TxtNomeFantasia" Grid.Row="0" Grid.Column="2" Margin="0,22,0,8"/>
+                        <TextBox x:Name="TxtNomeFantasia" Grid.Row="0" Grid.Column="2" Margin="0,8,0,8" Style="{StaticResource AppInputTextBox}"/>
 
                         <TextBlock Text="CPF/CNPJ" Grid.Row="1" Grid.Column="0"/>
-                        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="0,22,8,8">
-                            <TextBox x:Name="TxtCpfCnpj" MinWidth="180" MaxLength="18" LostFocus="TxtCpfCnpj_LostFocus" PreviewTextInput="TxtCpfCnpj_PreviewTextInput" TextChanged="TxtCpfCnpj_TextChanged" DataObject.Pasting="OnCpfCnpjPasting"/>
+                        <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="0,8,8,8">
+                            <TextBox x:Name="TxtCpfCnpj" MinWidth="180" MaxLength="18" LostFocus="TxtCpfCnpj_LostFocus" PreviewTextInput="TxtCpfCnpj_PreviewTextInput" TextChanged="TxtCpfCnpj_TextChanged" DataObject.Pasting="OnCpfCnpjPasting" Style="{StaticResource AppInputTextBox}"/>
                             <TextBlock x:Name="LblTipoDoc" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#555" FontWeight="Bold"/>
                         </StackPanel>
 
                         <TextBlock Text="IE" Grid.Row="1" Grid.Column="1"/>
-                        <TextBox x:Name="TxtIE" Grid.Row="1" Grid.Column="1" Margin="0,22,8,8"/>
+                        <TextBox x:Name="TxtIE" Grid.Row="1" Grid.Column="1" Margin="0,8,8,8" Style="{StaticResource AppInputTextBox}"/>
 
-                        <CheckBox x:Name="ChkIsentoIE" Content="Isento IE" Grid.Row="1" Grid.Column="2" VerticalAlignment="Bottom" Margin="0,22,0,8"/>
+                        <CheckBox x:Name="ChkIsentoIE" Content="Isento IE" Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Margin="0,8,0,8"/>
 
                         <TextBlock Text="Data de Nascimento" Grid.Row="2" Grid.Column="0"/>
-                        <DatePicker x:Name="DtNascimento" Grid.Row="2" Grid.Column="0" Margin="0,22,8,8"/>
+                        <DatePicker x:Name="DtNascimento" Grid.Row="2" Grid.Column="0" Margin="0,8,8,8"/>
 
                         <TextBlock Text="Telefone" Grid.Row="2" Grid.Column="1"/>
-                        <TextBox x:Name="TxtTelefone" Grid.Row="2" Grid.Column="1" Margin="0,22,8,8"/>
+                        <TextBox x:Name="TxtTelefone" Grid.Row="2" Grid.Column="1" Margin="0,8,8,8" Style="{StaticResource AppInputTextBox}"/>
 
                         <TextBlock Text="Email" Grid.Row="2" Grid.Column="2"/>
-                        <TextBox x:Name="TxtEmail" Grid.Row="2" Grid.Column="2" Margin="0,22,0,8"/>
+                        <TextBox x:Name="TxtEmail" Grid.Row="2" Grid.Column="2" Margin="0,8,0,8" Style="{StaticResource AppInputTextBox}"/>
 
                         <TextBlock Text="Limite de Crédito" Grid.Row="3" Grid.Column="0"/>
-                        <TextBox x:Name="TxtLimiteCredito" Grid.Row="3" Grid.Column="0" Margin="0,22,8,8"/>
+                        <TextBox x:Name="TxtLimiteCredito" Grid.Row="3" Grid.Column="0" Margin="0,8,8,8" Style="{StaticResource AppInputTextBox}"/>
 
                         <TextBlock Text="Endereço: Rua" Grid.Row="4" Grid.Column="0"/>
-                        <TextBox x:Name="TxtRua" Grid.Row="4" Grid.Column="0" Margin="0,22,8,8"/>
+                        <TextBox x:Name="TxtRua" Grid.Row="4" Grid.Column="0" Margin="0,8,8,8" Style="{StaticResource AppInputTextBox}"/>
 
                         <TextBlock Text="Número" Grid.Row="4" Grid.Column="1"/>
-                        <TextBox x:Name="TxtNumero" Grid.Row="4" Grid.Column="1" Margin="0,22,8,8"/>
+                        <TextBox x:Name="TxtNumero" Grid.Row="4" Grid.Column="1" Margin="0,8,8,8" Style="{StaticResource AppInputTextBox}"/>
 
                         <TextBlock Text="Complemento" Grid.Row="4" Grid.Column="2"/>
-                        <TextBox x:Name="TxtComplemento" Grid.Row="4" Grid.Column="2" Margin="0,22,0,8"/>
+                        <TextBox x:Name="TxtComplemento" Grid.Row="4" Grid.Column="2" Margin="0,8,0,8" Style="{StaticResource AppInputTextBox}"/>
 
                         <TextBlock Text="Bairro" Grid.Row="5" Grid.Column="0"/>
-                        <TextBox x:Name="TxtBairro" Grid.Row="5" Grid.Column="0" Margin="0,22,8,8"/>
+                        <TextBox x:Name="TxtBairro" Grid.Row="5" Grid.Column="0" Margin="0,8,8,8" Style="{StaticResource AppInputTextBox}"/>
 
                         <TextBlock Text="Cidade" Grid.Row="5" Grid.Column="1"/>
-                        <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,22,8,8">
-                            <TextBox x:Name="TxtCidade" MinWidth="180"/>
+                        <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,8,8,8">
+                            <TextBox x:Name="TxtCidade" MinWidth="180" Style="{StaticResource AppInputTextBox}"/>
                             <Button Content="Buscar" Click="BuscarCidade_Click" Margin="8,0,0,0"/>
                         </StackPanel>
 
                         <TextBlock Text="Estado" Grid.Row="5" Grid.Column="2"/>
-                        <TextBox x:Name="TxtEstado" Grid.Row="5" Grid.Column="2" Margin="0,22,0,8"/>
+                        <TextBox x:Name="TxtEstado" Grid.Row="5" Grid.Column="2" Margin="0,8,0,8" Style="{StaticResource AppInputTextBox}"/>
 
                         <TextBlock Text="CEP" Grid.Row="6" Grid.Column="0"/>
-                        <TextBox x:Name="TxtCep" Grid.Row="6" Grid.Column="0" Margin="0,22,8,8"/>
+                        <TextBox x:Name="TxtCep" Grid.Row="6" Grid.Column="0" Margin="0,8,8,8" Style="{StaticResource AppInputTextBox}"/>
                     </Grid>
                 </GroupBox>
 

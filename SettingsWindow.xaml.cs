@@ -20,6 +20,35 @@ namespace PDV_MedusaX8
         private List<PaymentMethod> _methods = new List<PaymentMethod>();
         public List<string> LinkTypes { get; } = new List<string> { "VENDA", "FISCAL", "FINANCEIRO", "OUTROS" };
 
+        public static bool EnableBlindCashClosure
+        {
+            get
+            {
+                using (var conn = new SqliteConnection(GetStaticConnectionString()))
+                {
+                    conn.Open();
+                    using (var cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = "SELECT Value FROM Settings WHERE Key=$key LIMIT 1;";
+                        cmd.Parameters.AddWithValue("$key", "EnableBlindCashClosure");
+                        var obj = cmd.ExecuteScalar();
+                        string? val = (obj == null || obj == DBNull.Value) ? null : Convert.ToString(obj);
+                        bool enableBlind = false;
+                        if (!string.IsNullOrWhiteSpace(val))
+                        {
+                            enableBlind = val == "1" || string.Equals(val, "true", StringComparison.OrdinalIgnoreCase);
+                        }
+                        return enableBlind;
+                    }
+                }
+            }
+        }
+
+        private static string GetStaticConnectionString()
+        {
+            return "Data Source=config.db";
+        }
+
         private Point? _dragStartPoint = null;
         private PaymentMethod? _dragSourceItem = null;
 
@@ -32,12 +61,28 @@ namespace PDV_MedusaX8
             this.Loaded += SettingsWindow_Loaded;
             this.SizeChanged += SettingsWindow_SizeChanged;
             LoadPaymentMethods();
+            // Aplicar estado persistido de edição NFC-e na sessão
+            try
+            {
+                using var conn = new SqliteConnection(GetConnectionString());
+                conn.Open();
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = "SELECT Value FROM Settings WHERE Key='NFCeEditEnabled' LIMIT 1;";
+                var obj = cmd.ExecuteScalar();
+                var s = (obj == null || obj == DBNull.Value) ? null : Convert.ToString(obj);
+                Services.SessionManager.NFCeEditEnabled = (!string.IsNullOrWhiteSpace(s)) && (s == "1" || string.Equals(s, "true", StringComparison.OrdinalIgnoreCase));
+            }
+            catch { Services.SessionManager.NFCeEditEnabled = false; }
             LoadNFCeConfig();
             LoadOptions();
             LoadGeneralOptions();
             LoadTEFConfig();
             LoadProdutoFacilConfig();
             LoadLogoSettings();
+
+#if DEBUG
+            try { Services.NFCeEditPolicy policy = new Services.NFCeEditPolicy(); var pFalse = policy.GetPolicy(false); var pTrue = policy.GetPolicy(true); System.Diagnostics.Debug.Assert(pFalse.CanEditEnvironment == false && pFalse.CanEditCashRegister == false && pFalse.CanEditCSC == false); System.Diagnostics.Debug.Assert(pTrue.CanEditEnvironment == true && pTrue.CanEditCashRegister == true && pTrue.CanEditCSC == false); } catch { }
+#endif
         }
 
         private void SettingsWindow_Loaded(object? sender, RoutedEventArgs e)
@@ -69,6 +114,17 @@ namespace PDV_MedusaX8
 
             // Carregar dados de Empresa/Contador para os grids da aba Empresa
             try { LoadEmpresaAndContadorFromDb(); } catch { }
+
+            // Aplicar estado de edição inicial dos dados do contador (sempre habilitado)
+            try
+            {
+                ApplyContadorEditState(true);
+            }
+            catch { }
+
+#if DEBUG
+            try { RunSystemSmokeTest(); } catch { }
+#endif
         }
 
         private void SettingsWindow_SizeChanged(object? sender, SizeChangedEventArgs e)
@@ -172,13 +228,12 @@ namespace PDV_MedusaX8
             // Contador
             using (var cmd = conn.CreateCommand())
             {
-                cmd.CommandText = "SELECT Id, Nome, CRC, CNPJ, CPF, Email, Telefone, Celular, CEP, Logradouro, Numero, Complemento, Bairro, MunicipioCodigo, MunicipioNome, UF FROM Contador LIMIT 1";
+                cmd.CommandText = "SELECT Id, Nome, CRC, CNPJ, CPF, Email, Telefone, Celular, CEP, Logradouro, Numero, Complemento, Bairro, MunicipioCodigo, MunicipioNome, UF, CRCEstado, CRCTipo FROM Contador LIMIT 1";
                 using var rd = cmd.ExecuteReader();
                 if (rd.Read())
                 {
                     (FindName("TxtContadorNome") as TextBox)!.Text = rd.IsDBNull(1) ? string.Empty : rd.GetString(1);
                     (FindName("TxtContadorCRC") as TextBox)!.Text = rd.IsDBNull(2) ? string.Empty : rd.GetString(2);
-                    (FindName("TxtContadorCNPJ") as TextBox)!.Text = rd.IsDBNull(3) ? string.Empty : rd.GetString(3);
                     (FindName("TxtContadorCPF") as TextBox)!.Text = rd.IsDBNull(4) ? string.Empty : rd.GetString(4);
                     (FindName("TxtContadorEmail") as TextBox)!.Text = rd.IsDBNull(5) ? string.Empty : rd.GetString(5);
                     (FindName("TxtContadorTelefone") as TextBox)!.Text = rd.IsDBNull(6) ? string.Empty : rd.GetString(6);
@@ -191,12 +246,61 @@ namespace PDV_MedusaX8
                     (FindName("TxtContadorMunicipioCodigo") as TextBox)!.Text = rd.IsDBNull(13) ? string.Empty : rd.GetString(13);
                     (FindName("TxtContadorMunicipioNome") as TextBox)!.Text = rd.IsDBNull(14) ? string.Empty : rd.GetString(14);
                     (FindName("TxtContadorUF") as TextBox)!.Text = rd.IsDBNull(15) ? string.Empty : rd.GetString(15);
+
+                    // Preencher Estado CRC e Tipo CRC na aba Dados do contador
+                    var cmbEstadoCRCCont = (FindName("CmbContadorEstadoCRC") as ComboBox);
+                    if (cmbEstadoCRCCont != null)
+                    {
+                        var est = rd.IsDBNull(16) ? string.Empty : rd.GetString(16);
+                        cmbEstadoCRCCont.SelectedValue = est;
+                        if (string.IsNullOrWhiteSpace(est)) cmbEstadoCRCCont.Text = string.Empty;
+                    }
+                    var cmbTipoCRCCont = (FindName("CmbContadorCRCTipo") as ComboBox);
+                    if (cmbTipoCRCCont != null)
+                    {
+                        var tipo = rd.IsDBNull(17) ? string.Empty : rd.GetString(17);
+                        cmbTipoCRCCont.SelectedValue = tipo;
+                        if (string.IsNullOrWhiteSpace(tipo)) cmbTipoCRCCont.Text = string.Empty;
+                    }
+
+                    // Espelhar dados na aba Empresa Contábil
+                    (FindName("TxtEmpresaContabilNome") as TextBox)!.Text = rd.IsDBNull(1) ? string.Empty : rd.GetString(1);
+                    (FindName("TxtEmpresaContabilCRC") as TextBox)!.Text = rd.IsDBNull(2) ? string.Empty : rd.GetString(2);
+                    (FindName("TxtEmpresaContabilEmail") as TextBox)!.Text = rd.IsDBNull(5) ? string.Empty : rd.GetString(5);
+                    (FindName("TxtEmpresaContabilTelefone") as TextBox)!.Text = rd.IsDBNull(6) ? string.Empty : rd.GetString(6);
+                    (FindName("TxtEmpresaContabilCEP") as TextBox)!.Text = rd.IsDBNull(8) ? string.Empty : rd.GetString(8);
+                    (FindName("TxtEmpresaContabilLogradouro") as TextBox)!.Text = rd.IsDBNull(9) ? string.Empty : rd.GetString(9);
+                    (FindName("TxtEmpresaContabilNumero") as TextBox)!.Text = rd.IsDBNull(10) ? string.Empty : rd.GetString(10);
+                    (FindName("TxtEmpresaContabilComplemento") as TextBox)!.Text = rd.IsDBNull(11) ? string.Empty : rd.GetString(11);
+                    (FindName("TxtEmpresaContabilBairro") as TextBox)!.Text = rd.IsDBNull(12) ? string.Empty : rd.GetString(12);
+                    (FindName("TxtEmpresaContabilMunicipioCodigo") as TextBox)!.Text = rd.IsDBNull(13) ? string.Empty : rd.GetString(13);
+                    (FindName("TxtEmpresaContabilMunicipioNome") as TextBox)!.Text = rd.IsDBNull(14) ? string.Empty : rd.GetString(14);
+                    var cmbUfEmpCont = (FindName("TxtEmpresaContabilUF") as ComboBox);
+                    if (cmbUfEmpCont != null)
+                    {
+                        var ufEmp = rd.IsDBNull(15) ? string.Empty : rd.GetString(15);
+                        cmbUfEmpCont.SelectedValue = ufEmp;
+                        if (string.IsNullOrWhiteSpace(ufEmp)) cmbUfEmpCont.Text = string.Empty;
+                    }
+                    var cmbEstadoCRC = (FindName("CmbEmpresaContabilEstadoCRC") as ComboBox);
+                    if (cmbEstadoCRC != null)
+                    {
+                        var est = rd.IsDBNull(16) ? string.Empty : rd.GetString(16);
+                        cmbEstadoCRC.SelectedValue = est;
+                        if (string.IsNullOrWhiteSpace(est)) cmbEstadoCRC.Text = string.Empty;
+                    }
+                    var cmbTipoCRC = (FindName("CmbEmpresaContabilCRCTipo") as ComboBox);
+                    if (cmbTipoCRC != null)
+                    {
+                        var tipo = rd.IsDBNull(17) ? string.Empty : rd.GetString(17);
+                        cmbTipoCRC.SelectedValue = tipo;
+                        if (string.IsNullOrWhiteSpace(tipo)) cmbTipoCRC.Text = string.Empty;
+                    }
                 }
                 else
                 {
                     (FindName("TxtContadorNome") as TextBox)!.Text = string.Empty;
                     (FindName("TxtContadorCRC") as TextBox)!.Text = string.Empty;
-                    (FindName("TxtContadorCNPJ") as TextBox)!.Text = string.Empty;
                     (FindName("TxtContadorCPF") as TextBox)!.Text = string.Empty;
                     (FindName("TxtContadorEmail") as TextBox)!.Text = string.Empty;
                     (FindName("TxtContadorTelefone") as TextBox)!.Text = string.Empty;
@@ -209,8 +313,49 @@ namespace PDV_MedusaX8
                     (FindName("TxtContadorMunicipioCodigo") as TextBox)!.Text = string.Empty;
                     (FindName("TxtContadorMunicipioNome") as TextBox)!.Text = string.Empty;
                     (FindName("TxtContadorUF") as TextBox)!.Text = string.Empty;
+
+                    var cmbEstadoCRCCont2 = (FindName("CmbContadorEstadoCRC") as ComboBox);
+                    if (cmbEstadoCRCCont2 != null) cmbEstadoCRCCont2.Text = string.Empty;
+                    var cmbTipoCRCCont2 = (FindName("CmbContadorCRCTipo") as ComboBox);
+                    if (cmbTipoCRCCont2 != null) cmbTipoCRCCont2.Text = string.Empty;
+
+                    (FindName("TxtEmpresaContabilNome") as TextBox)!.Text = string.Empty;
+                    (FindName("TxtEmpresaContabilCRC") as TextBox)!.Text = string.Empty;
+                    (FindName("TxtEmpresaContabilEmail") as TextBox)!.Text = string.Empty;
+                    (FindName("TxtEmpresaContabilTelefone") as TextBox)!.Text = string.Empty;
+                    (FindName("TxtEmpresaContabilCEP") as TextBox)!.Text = string.Empty;
+                    (FindName("TxtEmpresaContabilLogradouro") as TextBox)!.Text = string.Empty;
+                    (FindName("TxtEmpresaContabilNumero") as TextBox)!.Text = string.Empty;
+                    (FindName("TxtEmpresaContabilComplemento") as TextBox)!.Text = string.Empty;
+                    (FindName("TxtEmpresaContabilBairro") as TextBox)!.Text = string.Empty;
+                    (FindName("TxtEmpresaContabilMunicipioCodigo") as TextBox)!.Text = string.Empty;
+                    (FindName("TxtEmpresaContabilMunicipioNome") as TextBox)!.Text = string.Empty;
+                    var cmbUfEmpCont2 = (FindName("TxtEmpresaContabilUF") as ComboBox);
+                    if (cmbUfEmpCont2 != null) cmbUfEmpCont2.Text = string.Empty;
+                    var cmbEstadoCRC2 = (FindName("CmbEmpresaContabilEstadoCRC") as ComboBox);
+                    if (cmbEstadoCRC2 != null) cmbEstadoCRC2.Text = string.Empty;
+                    var cmbTipoCRC2 = (FindName("CmbEmpresaContabilCRCTipo") as ComboBox);
+                    if (cmbTipoCRC2 != null) cmbTipoCRC2.Text = string.Empty;
                 }
             }
+
+            // Estado do checkbox Empresa Contábil (persistência em Settings)
+            bool empresaContabilEnabled = true; // padrão: habilitado
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = "SELECT Value FROM Settings WHERE Key=$key LIMIT 1;";
+                cmd.Parameters.AddWithValue("$key", "EmpresaContabilEnabled");
+                var obj = cmd.ExecuteScalar();
+                var s = (obj == null || obj == DBNull.Value) ? null : Convert.ToString(obj);
+                if (!string.IsNullOrWhiteSpace(s))
+                {
+                    empresaContabilEnabled = (s == "1" || string.Equals(s, "true", StringComparison.OrdinalIgnoreCase));
+                }
+            }
+            var chk = (FindName("ChkEmpresaContabil") as CheckBox)!;
+            chk.IsChecked = empresaContabilEnabled;
+            var tabEmpCont = (FindName("TabEmpresaContabil") as System.Windows.Controls.TabItem);
+            if (tabEmpCont != null) tabEmpCont.Visibility = empresaContabilEnabled ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void SaveEmpresa_Click(object sender, RoutedEventArgs e)
@@ -308,7 +453,7 @@ namespace PDV_MedusaX8
             {
                 var nome = (FindName("TxtContadorNome") as TextBox)!.Text?.Trim();
                 var crc = (FindName("TxtContadorCRC") as TextBox)!.Text?.Trim();
-                var cnpj = (FindName("TxtContadorCNPJ") as TextBox)!.Text?.Trim();
+                var cnpj = string.Empty; // campo CNPJ removido da UI
                 var cpf = (FindName("TxtContadorCPF") as TextBox)!.Text?.Trim();
                 var email = (FindName("TxtContadorEmail") as TextBox)!.Text?.Trim();
                 var tel = (FindName("TxtContadorTelefone") as TextBox)!.Text?.Trim();
@@ -328,12 +473,45 @@ namespace PDV_MedusaX8
                     if (string.IsNullOrWhiteSpace(uf)) uf = cmbUfCont.Text?.Trim();
                 }
 
+                // Campos da aba Dados do contador (Estado CRC / Tipo)
+                var cmbEstadoCRC = FindName("CmbContadorEstadoCRC") as ComboBox;
+                string? crcEstado = null;
+                if (cmbEstadoCRC != null)
+                {
+                    crcEstado = cmbEstadoCRC.SelectedValue?.ToString();
+                    if (string.IsNullOrWhiteSpace(crcEstado)) crcEstado = cmbEstadoCRC.Text?.Trim();
+                }
+                var crcTipoCmb = FindName("CmbContadorCRCTipo") as ComboBox;
+                string? crcTipo = null;
+                if (crcTipoCmb != null)
+                {
+                    crcTipo = crcTipoCmb.SelectedValue?.ToString();
+                    if (string.IsNullOrWhiteSpace(crcTipo)) crcTipo = crcTipoCmb.Text?.Trim();
+                }
+
+                // Obrigatoriedade quando Empresa Contábil estiver habilitado (campos sempre editáveis)
+                var chkEmpCont = FindName("ChkEmpresaContabil") as CheckBox;
+                bool empresaContabilEnabled = chkEmpCont?.IsChecked == true;
+                if (empresaContabilEnabled)
+                {
+                    var missing = new List<string>();
+                    if (string.IsNullOrWhiteSpace(nome)) missing.Add("Nome");
+                    if (string.IsNullOrWhiteSpace(crc)) missing.Add("CRC");
+                    if (string.IsNullOrWhiteSpace(crcEstado)) missing.Add("Estado (CRC)");
+                    if (string.IsNullOrWhiteSpace(crcTipo)) missing.Add("Tipo CRC");
+                    if (missing.Count > 0)
+                    {
+                        MessageBox.Show($"Preencha os campos obrigatórios: {string.Join(", ", missing)}.", "Dados do contador", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                }
+
                 using var conn = new SqliteConnection(GetConnectionString());
                 conn.Open();
                 using var cmd = conn.CreateCommand();
                 cmd.CommandText = @"
-                    INSERT INTO Contador (Id, Nome, CRC, CNPJ, CPF, Email, Telefone, Celular, CEP, Logradouro, Numero, Complemento, Bairro, MunicipioCodigo, MunicipioNome, UF)
-                    VALUES ($id,$nome,$crc,$cnpj,$cpf,$email,$tel,$cel,$cep,$log,$num,$comp,$bai,$munCod,$munNome,$uf)
+                    INSERT INTO Contador (Id, Nome, CRC, CNPJ, CPF, Email, Telefone, Celular, CEP, Logradouro, Numero, Complemento, Bairro, MunicipioCodigo, MunicipioNome, UF, CRCEstado, CRCTipo)
+                    VALUES ($id,$nome,$crc,$cnpj,$cpf,$email,$tel,$cel,$cep,$log,$num,$comp,$bai,$munCod,$munNome,$uf,$crcEstado,$crcTipo)
                     ON CONFLICT(Id) DO UPDATE SET
                         Nome=excluded.Nome,
                         CRC=excluded.CRC,
@@ -349,7 +527,9 @@ namespace PDV_MedusaX8
                         Bairro=excluded.Bairro,
                         MunicipioCodigo=excluded.MunicipioCodigo,
                         MunicipioNome=excluded.MunicipioNome,
-                        UF=excluded.UF;";
+                        UF=excluded.UF,
+                        CRCEstado=excluded.CRCEstado,
+                        CRCTipo=excluded.CRCTipo;";
                 cmd.Parameters.AddWithValue("$id", 1);
                 cmd.Parameters.AddWithValue("$nome", string.IsNullOrWhiteSpace(nome) ? (object)DBNull.Value : nome);
                 cmd.Parameters.AddWithValue("$crc", string.IsNullOrWhiteSpace(crc) ? (object)DBNull.Value : crc);
@@ -366,6 +546,8 @@ namespace PDV_MedusaX8
                 cmd.Parameters.AddWithValue("$munCod", string.IsNullOrWhiteSpace(munCod) ? (object)DBNull.Value : OnlyDigits(munCod));
                 cmd.Parameters.AddWithValue("$munNome", string.IsNullOrWhiteSpace(munNome) ? (object)DBNull.Value : munNome);
                 cmd.Parameters.AddWithValue("$uf", string.IsNullOrWhiteSpace(uf) ? (object)DBNull.Value : uf);
+                cmd.Parameters.AddWithValue("$crcEstado", string.IsNullOrWhiteSpace(crcEstado) ? (object)DBNull.Value : crcEstado);
+                cmd.Parameters.AddWithValue("$crcTipo", string.IsNullOrWhiteSpace(crcTipo) ? (object)DBNull.Value : crcTipo);
                 cmd.ExecuteNonQuery();
 
                 MessageBox.Show("Contador salvo.", "Empresa", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -374,6 +556,109 @@ namespace PDV_MedusaX8
             {
                 MessageBox.Show($"Erro ao salvar contador: {ex.Message}", "Empresa", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void ApplyContadorEditState(bool enabled)
+        {
+            try
+            {
+                // Campos de Dados do contador
+                (FindName("TxtContadorNome") as TextBox)!.IsReadOnly = !enabled;
+                (FindName("TxtContadorCRC") as TextBox)!.IsReadOnly = !enabled;
+                (FindName("TxtContadorCPF") as TextBox)!.IsReadOnly = !enabled;
+                (FindName("TxtContadorEmail") as TextBox)!.IsReadOnly = !enabled;
+                (FindName("TxtContadorTelefone") as TextBox)!.IsReadOnly = !enabled;
+                var cmbEst = (FindName("CmbContadorEstadoCRC") as ComboBox);
+                if (cmbEst != null) cmbEst.IsEnabled = enabled;
+                var cmbTipo = (FindName("CmbContadorCRCTipo") as ComboBox);
+                if (cmbTipo != null) cmbTipo.IsEnabled = enabled;
+
+                // Botão removido - campos sempre habilitados
+            }
+            catch { }
+        }
+
+
+
+#if DEBUG
+        private void RunSystemSmokeTest()
+        {
+            try
+            {
+                var dbPath = Services.DbHelper.GetDbPath();
+                using var conn = new SqliteConnection(GetConnectionString());
+                conn.Open();
+
+                int settingsCount = 0;
+                int empresaCount = 0;
+                int contadorCount = 0;
+
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT COUNT(*) FROM Settings;";
+                    var obj = cmd.ExecuteScalar();
+                    settingsCount = (obj == null || obj == DBNull.Value) ? 0 : Convert.ToInt32(obj);
+                }
+
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT COUNT(*) FROM Empresa;";
+                    var obj = cmd.ExecuteScalar();
+                    empresaCount = (obj == null || obj == DBNull.Value) ? 0 : Convert.ToInt32(obj);
+                }
+
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT COUNT(*) FROM Contador;";
+                    var obj = cmd.ExecuteScalar();
+                    contadorCount = (obj == null || obj == DBNull.Value) ? 0 : Convert.ToInt32(obj);
+                }
+
+                // Upsert um valor de teste em Settings
+                SaveOrUpdateSetting(conn, "SmokeTestTimestamp", DateTime.Now.ToString("s"));
+
+                MessageBox.Show(
+                    $"Teste de sistema\n\n" +
+                    $"Banco atual: {dbPath}\n" +
+                    $"Settings: {settingsCount} registro(s)\n" +
+                    $"Empresa: {empresaCount} registro(s)\n" +
+                    $"Contador: {contadorCount} registro(s)",
+                    "Smoke Test",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information
+                );
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Falha no teste de sistema: " + ex.Message, "Smoke Test", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+#endif
+
+        private void ChkEmpresaContabil_Checked(object sender, RoutedEventArgs e)
+        {
+            var tab = FindName("TabEmpresaContabil") as System.Windows.Controls.TabItem;
+            if (tab != null) tab.Visibility = Visibility.Visible;
+            try
+            {
+                using var conn = new SqliteConnection(GetConnectionString());
+                conn.Open();
+                SaveOrUpdateSetting(conn, "EmpresaContabilEnabled", "1");
+            }
+            catch { }
+        }
+
+        private void ChkEmpresaContabil_Unchecked(object sender, RoutedEventArgs e)
+        {
+            var tab = FindName("TabEmpresaContabil") as System.Windows.Controls.TabItem;
+            if (tab != null) tab.Visibility = Visibility.Collapsed;
+            try
+            {
+                using var conn = new SqliteConnection(GetConnectionString());
+                conn.Open();
+                SaveOrUpdateSetting(conn, "EmpresaContabilEnabled", "0");
+            }
+            catch { }
         }
 
         private void SelectEmpresaMunicipio_Click(object sender, RoutedEventArgs e)
@@ -447,29 +732,37 @@ namespace PDV_MedusaX8
                 using (var conn = new SqliteConnection(GetConnectionString()))
                 {
                     conn.Open();
-                    using (var tx = conn.BeginTransaction())
+                    using (var cmd = conn.CreateCommand())
                     {
-                        foreach (var m in _methods)
+                        cmd.CommandText = "SELECT Id, Code, Name, IsEnabled, DisplayOrder, LinkType FROM PaymentMethods ORDER BY DisplayOrder, Name;";
+                        using (var reader = cmd.ExecuteReader())
                         {
-                            using (var cmd = conn.CreateCommand())
+                            while (reader.Read())
                             {
-                                cmd.CommandText = "UPDATE PaymentMethods SET Name=$name, IsEnabled=$enabled, DisplayOrder=$order, LinkType=$link WHERE Id=$id;";
-                                cmd.Parameters.AddWithValue("$name", m.Name);
-                                cmd.Parameters.AddWithValue("$enabled", m.IsEnabled ? 1 : 0);
-                                cmd.Parameters.AddWithValue("$order", m.DisplayOrder);
-                                cmd.Parameters.AddWithValue("$link", string.IsNullOrWhiteSpace(m.LinkType) ? (object)DBNull.Value : m.LinkType!);
-                                cmd.Parameters.AddWithValue("$id", m.Id);
-                                cmd.ExecuteNonQuery();
+                                _methods.Add(new PaymentMethod
+                                {
+                                    Id = reader.GetInt32(0),
+                                    Code = reader.GetString(1),
+                                    Name = reader.GetString(2),
+                                    IsEnabled = reader.GetInt32(3) == 1,
+                                    DisplayOrder = reader.GetInt32(4),
+                                    LinkType = reader.IsDBNull(5) ? null : reader.GetString(5)
+                                });
                             }
                         }
-                        tx.Commit();
                     }
+
+                    DgPaymentMethods.ItemsSource = null;
+                    DgPaymentMethods.ItemsSource = _methods;
+                    var view = System.Windows.Data.CollectionViewSource.GetDefaultView(DgPaymentMethods.ItemsSource);
+                    view.SortDescriptions.Clear();
+                    view.SortDescriptions.Add(new SortDescription(nameof(PaymentMethod.DisplayOrder), ListSortDirection.Ascending));
+                    view.Refresh();
                 }
-                MessageBox.Show("Formas de pagamento atualizadas.", "Configurações", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro ao salvar alterações: {ex.Message}", "Configurações", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Erro ao carregar formas de pagamento: {ex.Message}", "Configurações", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -550,11 +843,88 @@ namespace PDV_MedusaX8
                     (FindName("TxtCert") as TextBox)!.Text = thumbText;
                     (FindName("TxtCSCId") as TextBox)!.Text = cscId ?? string.Empty;
                     (FindName("TxtCSC") as TextBox)!.Text = csc ?? string.Empty;
+
+                    ApplyNFCeEditState();
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Erro ao carregar configuração NFC-e: {ex.Message}", "Configurações", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ApplyNFCeEditState()
+        {
+            try
+            {
+                var policySvc = new Services.NFCeEditPolicy();
+                bool enabled = Services.SessionManager.NFCeEditEnabled;
+                var pol = policySvc.GetPolicy(enabled);
+
+                var cmbEnv = (FindName("CmbEnvironment") as ComboBox)!;
+                var txtCash = (FindName("TxtCashRegister") as TextBox)!;
+                var txtSerie = (FindName("TxtSerie") as TextBox)!;
+                var txtNext = (FindName("TxtNextNumber") as TextBox)!;
+                var txtCSCId = (FindName("TxtCSCId") as TextBox)!;
+                var txtCSC = (FindName("TxtCSC") as TextBox)!;
+                var btnCert = (FindName("BtnSelectCert") as Button)!;
+                var btnToggle = (FindName("BtnToggleNFCeEdit") as Button)!;
+
+                cmbEnv.IsEnabled = pol.CanEditEnvironment;
+                txtCash.IsReadOnly = !pol.CanEditCashRegister;
+                txtSerie.IsReadOnly = !pol.CanEditSerie;
+                txtNext.IsReadOnly = !pol.CanEditNextNumber;
+                txtCSCId.IsReadOnly = !pol.CanEditCSCId;
+                txtCSC.IsReadOnly = !pol.CanEditCSC;
+                btnCert.IsEnabled = pol.CanSelectCertificate;
+
+                btnToggle.Content = enabled ? "Desabilitar Edição" : "Habilitar Edição";
+                var brushConverter = new System.Windows.Media.BrushConverter();
+                var cancelBrush = TryFindResource("BrCancelar") as System.Windows.Media.Brush
+                                   ?? (brushConverter.ConvertFromString("#dc3545") as System.Windows.Media.Brush
+                                       ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(220, 53, 69)));
+                var okBrush = brushConverter.ConvertFromString("#28a745") as System.Windows.Media.Brush
+                              ?? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(40, 167, 69));
+                btnToggle.Background = enabled ? okBrush : cancelBrush;
+            }
+            catch { }
+        }
+
+        private void ToggleNFCeEdit_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var policySvc = new Services.NFCeEditPolicy();
+                if (!policySvc.CanToggleEditing())
+                {
+                    MessageBox.Show("Você não tem permissão para habilitar a edição de NFC-e.", "Permissão", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                bool willEnable = !Services.SessionManager.NFCeEditEnabled;
+                if (willEnable)
+                {
+                    var confirm = MessageBox.Show(
+                        "Deseja habilitar a edição dos campos da NFC-e? Campos sensíveis permanecerão protegidos.",
+                        "Confirmar",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+                    if (confirm != MessageBoxResult.Yes) return;
+                }
+
+                Services.SessionManager.NFCeEditEnabled = willEnable;
+                try
+                {
+                    using var conn = new SqliteConnection(GetConnectionString());
+                    conn.Open();
+                    SaveOrUpdateSetting(conn, "NFCeEditEnabled", willEnable ? "1" : "0");
+                }
+                catch { }
+                ApplyNFCeEditState();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erro ao alternar edição: {ex.Message}", "Configurações", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -858,14 +1228,26 @@ namespace PDV_MedusaX8
                         cmd.Parameters.Clear();
                         cmd.CommandText = "SELECT Value FROM Settings WHERE Key=$key LIMIT 1;";
                         cmd.Parameters.AddWithValue("$key", "RequireF2ToStartSale");
-                        var obj4 = cmd.ExecuteScalar();
-                        string? val4 = (obj4 == null || obj4 == DBNull.Value) ? null : Convert.ToString(obj4);
+                        var obj3 = cmd.ExecuteScalar();
+                        string? val3 = (obj3 == null || obj3 == DBNull.Value) ? null : Convert.ToString(obj3);
                         bool requireF2 = false;
-                        if (!string.IsNullOrWhiteSpace(val4))
+                        if (!string.IsNullOrWhiteSpace(val3))
                         {
-                            requireF2 = val4 == "1" || string.Equals(val4, "true", StringComparison.OrdinalIgnoreCase);
+                            requireF2 = val3 == "1" || string.Equals(val3, "true", StringComparison.OrdinalIgnoreCase);
                         }
                         (FindName("ChkRequireF2ToStartSale") as CheckBox)!.IsChecked = requireF2;
+
+                        cmd.Parameters.Clear();
+                        cmd.CommandText = "SELECT Value FROM Settings WHERE Key=$key LIMIT 1;";
+                        cmd.Parameters.AddWithValue("$key", "EnableBlindCashClosure");
+                        var obj4 = cmd.ExecuteScalar();
+                        string? val4 = (obj4 == null || obj4 == DBNull.Value) ? null : Convert.ToString(obj4);
+                        bool enableBlind = false;
+                        if (!string.IsNullOrWhiteSpace(val4))
+                        {
+                            enableBlind = val4 == "1" || string.Equals(val4, "true", StringComparison.OrdinalIgnoreCase);
+                        }
+                        (FindName("ChkEnableBlindCashClosure") as CheckBox)!.IsChecked = enableBlind;
 
                         cmd.Parameters.Clear();
                         cmd.CommandText = "SELECT Value FROM Settings WHERE Key=$key LIMIT 1;";
@@ -882,11 +1264,11 @@ namespace PDV_MedusaX8
                         cmd.Parameters.Clear();
                         cmd.CommandText = "SELECT Value FROM Settings WHERE Key=$key LIMIT 1;";
                         cmd.Parameters.AddWithValue("$key", "RequireSupervisorForSangria");
-                        var obj3 = cmd.ExecuteScalar();
-                        string? val3 = (obj3 == null || obj3 == DBNull.Value) ? null : Convert.ToString(obj3);
-                        if (!string.IsNullOrWhiteSpace(val3))
+                        var obj5 = cmd.ExecuteScalar();
+                        string? val5 = (obj5 == null || obj5 == DBNull.Value) ? null : Convert.ToString(obj5);
+                        if (!string.IsNullOrWhiteSpace(val5))
                         {
-                            requireSupervisorSangria = val3 == "1" || string.Equals(val3, "true", StringComparison.OrdinalIgnoreCase);
+                            requireSupervisorSangria = val5 == "1" || string.Equals(val5, "true", StringComparison.OrdinalIgnoreCase);
                         }
                         (FindName("ChkRequireSupervisorForSangria") as CheckBox)!.IsChecked = requireSupervisorSangria;
 
@@ -904,11 +1286,11 @@ namespace PDV_MedusaX8
                         cmd.Parameters.Clear();
                         cmd.CommandText = "SELECT Value FROM Settings WHERE Key=$key LIMIT 1;";
                         cmd.Parameters.AddWithValue("$key", "RequireSupervisorForClosingCash");
-                        var obj5 = cmd.ExecuteScalar();
-                        string? val5 = (obj5 == null || obj5 == DBNull.Value) ? null : Convert.ToString(obj5);
-                        if (!string.IsNullOrWhiteSpace(val5))
+                        var objClose = cmd.ExecuteScalar();
+                        string? valClose = (objClose == null || objClose == DBNull.Value) ? null : Convert.ToString(objClose);
+                        if (!string.IsNullOrWhiteSpace(valClose))
                         {
-                            requireSupervisorClosing = val5 == "1" || string.Equals(val5, "true", StringComparison.OrdinalIgnoreCase);
+                            requireSupervisorClosing = valClose == "1" || string.Equals(valClose, "true", StringComparison.OrdinalIgnoreCase);
                         }
                         (FindName("ChkRequireSupervisorForClosingCash") as CheckBox)!.IsChecked = requireSupervisorClosing;
 
@@ -939,6 +1321,11 @@ namespace PDV_MedusaX8
         {
             try
             {
+                if (!Services.SessionManager.NFCeEditEnabled)
+                {
+                    MessageBox.Show("Edição desabilitada. Habilite a edição para salvar.", "Configurações", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
                 var txtCash = (FindName("TxtCashRegister") as TextBox)!;
                 var txtSerie = (FindName("TxtSerie") as TextBox)!;
                 var txtNext = (FindName("TxtNextNumber") as TextBox)!;
@@ -1365,6 +1752,38 @@ namespace PDV_MedusaX8
                                 ins2.Parameters.AddWithValue("$key", "PromptConsumerOnFirstItem");
                                 ins2.Parameters.AddWithValue("$val", promptFlag.ToString());
                                 ins2.ExecuteNonQuery();
+                            }
+                        }
+                    }
+
+                    // Atualiza/insere opção: Habilitar Conferência às Cegas
+                    var chkBlind = (FindName("ChkEnableBlindCashClosure") as CheckBox)!;
+                    int blindFlag = (chkBlind.IsChecked == true) ? 1 : 0;
+
+                    using (var sel3 = conn.CreateCommand())
+                    {
+                        sel3.CommandText = "SELECT COUNT(*) FROM Settings WHERE Key=$key;";
+                        sel3.Parameters.AddWithValue("$key", "EnableBlindCashClosure");
+                        var countObj3 = sel3.ExecuteScalar();
+                        int count3 = Convert.ToInt32(countObj3);
+                        if (count3 > 0)
+                        {
+                            using (var upd3 = conn.CreateCommand())
+                            {
+                                upd3.CommandText = "UPDATE Settings SET Value=$val WHERE Key=$key;";
+                                upd3.Parameters.AddWithValue("$val", blindFlag.ToString());
+                                upd3.Parameters.AddWithValue("$key", "EnableBlindCashClosure");
+                                upd3.ExecuteNonQuery();
+                            }
+                        }
+                        else
+                        {
+                            using (var ins3 = conn.CreateCommand())
+                            {
+                                ins3.CommandText = "INSERT INTO Settings (Key, Value) VALUES ($key, $val);";
+                                ins3.Parameters.AddWithValue("$key", "EnableBlindCashClosure");
+                                ins3.Parameters.AddWithValue("$val", blindFlag.ToString());
+                                ins3.ExecuteNonQuery();
                             }
                         }
                     }

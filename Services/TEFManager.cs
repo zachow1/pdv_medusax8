@@ -35,7 +35,7 @@ namespace PDV_MedusaX8.Services
 
     public class TEFManager
     {
-        private static TEFManager _instance;
+        private static TEFManager? _instance;
         private TEFIntegrationType _currentTEFType;
         private bool _isInitialized = false;
         private ITEFProvider? _provider;
@@ -72,8 +72,7 @@ namespace PDV_MedusaX8.Services
             try
             {
                 App.Log("TEF Load configuration");
-                string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "medusax8.db");
-                using (var connection = new SqliteConnection($"Data Source={dbPath}"))
+                using (var connection = new SqliteConnection(DbHelper.GetConnectionString()))
                 {
                     connection.Open();
                     // Carrega o tipo de TEF configurado

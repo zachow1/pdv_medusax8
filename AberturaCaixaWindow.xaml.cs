@@ -6,7 +6,7 @@ using PDV_MedusaX8.Services;
 
 namespace PDV_MedusaX8
 {
-    public partial class AberturaCaixaWindow : Window
+    public partial class AberturaCaixaWindow : System.Windows.Window
     {
         public AberturaCaixaWindow()
         {

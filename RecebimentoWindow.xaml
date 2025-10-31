@@ -65,18 +65,18 @@
                     </StackPanel>
                     <StackPanel Margin="20,0,0,0" Width="200">
                         <TextBlock Text="Valor a receber"/>
-                        <TextBox Name="TxtAmount"/>
+                        <TextBox Name="TxtAmount" Style="{StaticResource AppInputTextBox}"/>
                     </StackPanel>
                 </StackPanel>
 
                 <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,8,0,0">
                     <StackPanel Width="300">
                         <TextBlock Text="CPF/CNPJ"/>
-                        <TextBox Name="TxtDoc"/>
+                        <TextBox Name="TxtDoc" Style="{StaticResource AppInputTextBox}"/>
                     </StackPanel>
                     <StackPanel Margin="20,0,0,0" Width="300">
                         <TextBlock Text="Nome"/>
-                        <TextBox Name="TxtName"/>
+                        <TextBox Name="TxtName" Style="{StaticResource AppInputTextBox}"/>
                     </StackPanel>
                 </StackPanel>
 

@@ -18,13 +18,14 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Valor Inicial (Dinheiro):"/>
-            <TextBox x:Name="TxtValor" Grid.Row="0" Grid.Column="0" Margin="0,24,12,8" FontSize="16" Text="0,00" HorizontalAlignment="Stretch"/>
+            <TextBox x:Name="TxtValor" Grid.Row="1" Grid.Column="0" Margin="0,8,12,8" FontSize="16" Text="0,00" HorizontalAlignment="Stretch" Style="{StaticResource AppInputTextBox}"/>
 
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="Motivo (opcional):"/>
-            <TextBox x:Name="TxtMotivo" Grid.Row="1" Grid.Column="0" Margin="0,24,12,8" HorizontalAlignment="Stretch"/>
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Motivo (opcional):"/>
+            <TextBox x:Name="TxtMotivo" Grid.Row="3" Grid.Column="0" Margin="0,8,12,8" HorizontalAlignment="Stretch" Style="{StaticResource AppInputTextBox}"/>
         </Grid>
 
         <!-- Painel de autorização do supervisor (exibido quando obrigatório) -->

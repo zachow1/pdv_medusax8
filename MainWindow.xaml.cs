@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using System.Globalization;
@@ -18,7 +19,6 @@ namespace PDV_MedusaX8
 {
     public partial class MainWindow : Window
     {
-        private DispatcherTimer timer;
         private decimal currentSaleTotal = 0m;
         private bool _isParsingCodeInput = false;
         private bool _modoAlteracaoPrecoF9 = false;
@@ -219,7 +219,20 @@ namespace PDV_MedusaX8
                 InputCodeField.Focus();
                 // Atualiza aviso de situação do caixa ao carregar a janela
                 try { RefreshCashSessionStatus(); } catch { }
+                
+                // Sincroniza alturas dos borders quando a janela carrega
+                try { SyncBorderHeights(); } catch { }
+                
+                // Adiciona evento para sincronizar quando o RightTopBorder mudar de tamanho
+                if (RightTopBorder != null)
+                {
+                    RightTopBorder.SizeChanged += (s, args) => {
+                        try { SyncBorderHeights(); } catch { }
+                    };
+                }
             };
+            // Ajustes responsivos simples: alinhar topo dos boxes 65%/35% em telas grandes
+            this.SizeChanged += MainWindow_SizeChanged;
         }
 
         private void UpdateERPImportShortcutVisibility()
@@ -244,6 +257,78 @@ namespace PDV_MedusaX8
             catch
             {
                 try { if (BtnERPImportShortcut != null) BtnERPImportShortcut.Visibility = Visibility.Collapsed; } catch { }
+            }
+        }
+
+        // Breakpoints de largura (em DIPs) para responsividade
+        private const double BreakpointLarge = 1600;   // ~17"+
+        private const double BreakpointXL = 1920;      // telas muito largas
+
+        private void MainWindow_SizeChanged(object? sender, SizeChangedEventArgs e)
+        {
+            try
+            {
+                ApplyResponsiveLayout();
+                SyncBorderHeights();
+            }
+            catch { /* ajustes visuais não devem quebrar */ }
+        }
+
+        // Aplica ajustes progressivos de layout com base na largura efetiva da janela
+        private void ApplyResponsiveLayout()
+        {
+            double w = this.ActualWidth;
+
+            // Margens finas no topo para manter alinhamento visual
+            if (LeftTopBorder != null && RightTopBorder != null)
+            {
+                if (w >= BreakpointLarge)
+                {
+                    LeftTopBorder.Margin = new Thickness(0, 5, 0, 0);
+                    RightTopBorder.Margin = new Thickness(0, 5, 0, 5);
+                }
+                else
+                {
+                    LeftTopBorder.Margin = new Thickness(0, 0, 0, 0);
+                    RightTopBorder.Margin = new Thickness(0, 0, 0, 5);
+                }
+            }
+
+            // Densidade do DataGrid (altura da linha) por breakpoint
+            try
+            {
+                if (DgvProdutos != null)
+                {
+                    if (w >= BreakpointXL)
+                        DgvProdutos.RowHeight = 44; // aumenta altura para conforto em telas muito largas
+                    else if (w >= BreakpointLarge)
+                        DgvProdutos.RowHeight = 40; // leve incremento
+                    else
+                        DgvProdutos.RowHeight = 36; // padrão atual
+                }
+            }
+            catch { /* ajustes visuais não devem quebrar */ }
+        }
+
+        // Sincroniza alturas dos painéis superiores das colunas esquerda e direita
+        private void SyncBorderHeights()
+        {
+            if (RightTopBorder != null && LeftTopBorder != null)
+            {
+                // Remover bindings caso existam
+                BindingOperations.ClearBinding(LeftTopBorder, Border.HeightProperty);
+                BindingOperations.ClearBinding(RightTopBorder, Border.HeightProperty);
+
+                // Define uma altura comum para ambos (usa o menor para não estourar o layout)
+                var hLeft = LeftTopBorder.ActualHeight;
+                var hRight = RightTopBorder.ActualHeight;
+                var desired = Math.Min(hLeft > 0 ? hLeft : hRight, hRight > 0 ? hRight : hLeft);
+
+                if (desired > 0)
+                {
+                    LeftTopBorder.Height = desired;
+                    RightTopBorder.Height = desired;
+                }
             }
         }
 
@@ -329,54 +414,13 @@ namespace PDV_MedusaX8
 
         private void CloseWindow(object sender, RoutedEventArgs e)
         {
+            // Apenas delega para o fluxo centralizado no evento Closing
+            // para evitar prompts duplicados quando o usuário clica no botão X.
             if (_cartItems.Count > 0)
             {
                 MessageBox.Show("Não é possível fechar enquanto há itens na venda.", "Fechamento bloqueado", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            // Perguntar fechamento do caixa ao clicar em X
-            try
-            {
-                if (HasActiveCashSession())
-                {
-                    var ask = MessageBox.Show("Deseja realizar o fechamento do caixa agora?", "Fechar Caixa", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    if (ask == MessageBoxResult.Yes)
-                    {
-                        string? supervisor = null;
-                        var askSup = MessageBox.Show("Deseja incluir um supervisor na validação?", "Supervisor", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                        if (askSup == MessageBoxResult.Yes)
-                        {
-                            var auth = new LoginWindow(authorizationMode: true) { Owner = this };
-                            var ok = auth.ShowDialog();
-                            if (ok == true && (string.Equals(auth.LoggedRole, "admin", StringComparison.OrdinalIgnoreCase) || string.Equals(auth.LoggedRole, "fiscal", StringComparison.OrdinalIgnoreCase)))
-                            {
-                                supervisor = auth.LoggedUser;
-                            }
-                            else
-                            {
-                                MessageBox.Show("Acesso de supervisor negado ou cancelado.", "Supervisor", MessageBoxButton.OK, MessageBoxImage.Warning);
-                            }
-                        }
-                        var fc = new FechamentoCaixaWindow();
-                        fc.Owner = this;
-                        fc.ClosedByUser = SessionManager.CurrentUser;
-                        fc.SupervisorUser = supervisor;
-                        fc.ShowDialog();
-                        // Atualiza aviso ao retornar do fechamento
-                        try { RefreshCashSessionStatus(); } catch { }
-                        // Se ainda houver sessão ativa, confirmar se deve continuar encerrando
-                        if (HasActiveCashSession())
-                        {
-                            var cont = MessageBox.Show("Fechamento não concluído. Deseja sair mesmo assim?", "Encerrar", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                            if (cont == MessageBoxResult.No)
-                            {
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-            catch { /* ignore */ }
             this.Close();
         }
 
@@ -787,10 +831,11 @@ namespace PDV_MedusaX8
             var win = new CancelItemWindow(options);
             win.Owner = this;
             var ok = win.ShowDialog();
-            App.Log($"CancelItemWindow result ok={(ok == true)} itens={(win.Result?.Count ?? 0)}");
-            if (ok == true && win.Result.Count > 0)
+            var results = win.Result ?? new List<(string Code, string Description, double Qty, decimal UnitPrice)>();
+            App.Log($"CancelItemWindow result ok={(ok == true)} itens={results.Count}");
+            if (ok == true && results.Count > 0)
             {
-                foreach (var it in win.Result)
+                foreach (var it in results)
                 {
                     CancelCartItem(it.Code, it.Description, it.Qty, it.UnitPrice);
                     App.Log($"Cancel aplicado Code={it.Code} Qty={it.Qty}");
@@ -889,7 +934,6 @@ namespace PDV_MedusaX8
             try { BtnReceberTitulo.IsEnabled = !restrict; BtnReceberTitulo.Visibility = Visibility.Visible; } catch { }
             try { BtnFecharCaixa.IsEnabled = !restrict; BtnFecharCaixa.Visibility = Visibility.Visible; } catch { }
             try { BtnNFCe.IsEnabled = !restrict; BtnNFCe.Visibility = Visibility.Visible; } catch { }
-            try { BtnOperador.IsEnabled = !restrict; } catch { }
         }
 
         private bool HasActiveCashSession()
@@ -1931,6 +1975,33 @@ namespace PDV_MedusaX8
                     ";
                     cmdEmp.ExecuteNonQuery();
                 }
+
+                // Migração leve: garantir colunas CRCEstado e CRCTipo em Contador
+                using (var chkCols = conn.CreateCommand())
+                {
+                    chkCols.CommandText = "PRAGMA table_info('Contador');";
+                    var existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    using (var rd = chkCols.ExecuteReader())
+                    {
+                        while (rd.Read())
+                        {
+                            var name = rd.GetString(1);
+                            existing.Add(name);
+                        }
+                    }
+                    if (!existing.Contains("CRCEstado"))
+                    {
+                        using var add1 = conn.CreateCommand();
+                        add1.CommandText = "ALTER TABLE Contador ADD COLUMN CRCEstado TEXT;";
+                        add1.ExecuteNonQuery();
+                    }
+                    if (!existing.Contains("CRCTipo"))
+                    {
+                        using var add2 = conn.CreateCommand();
+                        add2.CommandText = "ALTER TABLE Contador ADD COLUMN CRCTipo TEXT;";
+                        add2.ExecuteNonQuery();
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -2223,7 +2294,7 @@ namespace PDV_MedusaX8
     // Fallback: tentar no banco pdv.db para compatibilidade
     try
     {
-        using var conn2 = new SqliteConnection("Data Source=pdv.db");
+            using var conn2 = new SqliteConnection(DbHelper.GetConnectionString());
         conn2.Open();
         using var cmd2 = conn2.CreateCommand();
         cmd2.CommandText = "SELECT Value FROM Settings WHERE Key = 'MaxDiscountPercent'";
@@ -2365,7 +2436,9 @@ namespace PDV_MedusaX8
                 using var cmdShow = conn.CreateCommand();
                 cmdShow.CommandText = "SELECT Value FROM Settings WHERE Key = 'ShowLogo' LIMIT 1;";
                 var showLogoValue = cmdShow.ExecuteScalar();
-                bool showLogo = showLogoValue != null && (showLogoValue.ToString() == "1" || showLogoValue.ToString().ToLower() == "true");
+                var showLogoStr = showLogoValue?.ToString();
+                bool showLogo = string.Equals(showLogoStr, "1", StringComparison.Ordinal) ||
+                                string.Equals(showLogoStr, "true", StringComparison.OrdinalIgnoreCase);
                 
                 if (!showLogo)
                 {

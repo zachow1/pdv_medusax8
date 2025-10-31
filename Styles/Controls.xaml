@@ -84,11 +84,13 @@
 
   <!-- TextBox moderno -->
   <Style TargetType="TextBox">
-    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="Padding" Value="10,2"/>
     <Setter Property="FontSize" Value="14"/>
     <Setter Property="BorderThickness" Value="1.5"/>
     <Setter Property="BorderBrush" Value="{StaticResource CorBorda}"/>
     <Setter Property="Background" Value="White"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="TextBox">
@@ -96,7 +98,9 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="6">
-            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" 
+                         VerticalAlignment="Center" 
+                         HorizontalAlignment="Center"/>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsFocused" Value="True">
@@ -110,11 +114,13 @@
 
   <!-- PasswordBox moderno -->
   <Style TargetType="PasswordBox">
-    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="Padding" Value="10,2"/>
     <Setter Property="FontSize" Value="14"/>
     <Setter Property="BorderThickness" Value="1.5"/>
     <Setter Property="BorderBrush" Value="{StaticResource CorBorda}"/>
     <Setter Property="Background" Value="White"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="PasswordBox">
@@ -122,7 +128,9 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="6">
-            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" 
+                         VerticalAlignment="Center" 
+                         HorizontalAlignment="Center"/>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsFocused" Value="True">
@@ -134,15 +142,29 @@
     </Setter>
   </Style>
 
+  <!-- Padrão de inputs: altura 32, padding compacto e conteúdo centralizado -->
+  <Style x:Key="AppInputTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+    <Setter Property="Height" Value="32"/>
+    <Setter Property="Padding" Value="10,2"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style x:Key="AppInputPasswordBox" TargetType="PasswordBox" BasedOn="{StaticResource {x:Type PasswordBox}}">
+    <Setter Property="Height" Value="32"/>
+    <Setter Property="Padding" Value="10,2"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+
   <!-- ComboBox básico moderno -->
   <Style TargetType="ComboBox">
     <Setter Property="Padding" Value="8,6"/>
     <Setter Property="BorderThickness" Value="1.5"/>
     <Setter Property="BorderBrush" Value="{StaticResource CorBorda}"/>
     <Setter Property="Background" Value="White"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
   </Style>
   <Style TargetType="ComboBoxItem">
     <Setter Property="Padding" Value="8,6"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
   </Style>
 
   <!-- GroupBox com cabeçalho destacado -->
